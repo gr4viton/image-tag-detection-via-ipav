@@ -76,33 +76,36 @@ def drawMatches(img1, kp1, img2, kp2, matches):
     # Also return the image if you'd like a copy
     return out
 
-def getTracker(path):
-    #global tracker, ar_verts, ar_edges
-
-    im = cv2.imread(path, 0)
-    # print(tag.shape)
-    rect = [0, 0, im.shape[0], im.shape[1]]
-
-    a = max(im.shape)
-    # im = np.uint8(np.absolute(cv2.Laplacian(tag, cv2.CV_64F)))
-    im = cv2.copyMakeBorder(im, a, a, a, a, cv2.BORDER_CONSTANT, value=255)
-    # tracker.add_target(im, rect)
-    # cv2.imshow('ahoj',im)
-    print("TAG tracker added here")
-
+def readIm(pre, tag):
+    dIm = 'd:/WORK/2015/2015_09_08 - multikoptera/pyc/pic/'
+    fIm =  pre + '_' + tag + '.png'
+    im = cv2.imread(dIm + fIm,0)
+    if im is not None:
+        print("Loaded image: [" + fIm + "] = " + str(im.shape) )
     return im
 
-dIm = 'd:/WORK/2015/2015_09_08 - multikoptera/pyc/'
-pIm = dIm+'tag1.bmp'
-# pIm = dIm+'lena.jpg'
-# pIm = dIm+'lenaSmall.jpg'
-img1 = getTracker(pIm)
+def makeBorder(im, bgColor):
+    # rect = [0, 0, im.shape[0], im.shape[1]]
+    a = max(im.shape)
+    im = cv2.copyMakeBorder(im, a, a, a, a, cv2.BORDER_CONSTANT, value=bgColor)
+    return im
 
-pIm = dIm+'tag1rot.bmp'
-pIm = dIm+'tag1inScene.png'
-# pIm = dIm+'lenaRot.jpg'
-# pIm = dIm+'lenaRotSmall.jpg'
-img2 = cv2.imread(pIm,0) # trainImage
+def makeLaplacian(im):
+    return np.uint8(np.absolute(cv2.Laplacian(im, cv2.CV_64F)))
+
+bgColor = 0 # black
+# bgColor = 255 # white
+
+img1 = makeBorder(readIm('invnoborder', '2L'), bgColor)
+img2 = readIm('space', '2L')
+
+
+# img1 = makeLaplacian(img1)
+# img2 = makeLaplacian(img2)
+
+# tracker.add_target(im, rect)
+#     print("TAG tracker added here")
+
 
 # tag = getTracker()
 # img1 = tag
@@ -139,6 +142,7 @@ for m,n in matches:
 
 hDiff = img2.shape[0] - img1.shape[0]
 img1a = cv2.copyMakeBorder(img1,0,hDiff,0,0,cv2.BORDER_CONSTANT, value=0)
+
 img3 = cv2.cvtColor(np.hstack([img1a,img2]), cv2.COLOR_GRAY2RGB)
 # img3 = []
 

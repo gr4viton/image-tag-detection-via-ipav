@@ -272,6 +272,8 @@ def stepCV(cap):
         # edgeTag =  np.uint8(np.absolute( cv2.Sobel(imTag, cv2.CV_64F, 1, 0, ksize=5) ))
         # Laplacian
         edgeTag = np.uint8(np.absolute(cv2.Laplacian(imTag, cv2.CV_64F)))
+        edgeTag = imTag
+
         # make border for better drawing
         im = cv2.copyMakeBorder(edgeTag, a, a, a, a, cv2.BORDER_CONSTANT, value=0)
         vis.append(im)
@@ -294,7 +296,7 @@ def stepCV(cap):
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # show of
 
-    #  ims = [gray, cl1, blur, thresh, clear, flooded]
+    # ims = [gray, cl1, blur, thresh, clear, flooded]
     ims = [gray, cl1, clear, paired]
     imWhole = np.vstack(ims)
 
