@@ -255,7 +255,7 @@ def stepCV(cap):
     im = thresh
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # inversion
-    im = inverte(im)
+    # im = inverte(im.copy())
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # imclearborder
     # maks out all contours which are touching the border
@@ -272,6 +272,7 @@ def stepCV(cap):
     # col = 64
     # opened = bwareaopen(im, 5*5, col)
     # im = opened
+
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # imfill
     # flood
