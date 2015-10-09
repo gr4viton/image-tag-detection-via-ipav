@@ -75,6 +75,77 @@ def drawMatches(img1, kp1, img2, kp2, matches):
 
     # Also return the image if you'd like a copy
     return out
+def orbDesc(im1,im2, imBoth):
+
+    # Initiate ORB detector
+    # orb = cv2.ORB_create( nfeatures = 300 )
+    orb = cv2.ORB_create( nfeatures = 400 )
+
+    # find the keypoints and descriptors with SIFT
+    kp1, des1 = orb.detectAndCompute(im1,None)
+    kp2, des2 = orb.detectAndCompute(im2,None)
+
+    # create BFMatcher object
+    bf = cv2.BFMatcher()
+    # Match descriptors.
+    matches = bf.knnMatch( des1,des2, k=2)
+
+    # Apply ratio test
+    good = []
+    goodIdx = []
+    idx = 0
+    const = 0.80
+    # const = 0.90
+
+    for m,n in matches:
+        if m.distance < const*n.distance:
+            good.append([m])
+            goodIdx.append(idx)
+        idx += 1
+
+    # img3 = []
+
+    # change kp points - useless i will not use knnMatch and orb..
+    # for m in goodIdx:
+    #     # kp1[m].pt = tuple(x+100 for x in kp1[m].pt)
+    #     print m
+    #     print kp2[m].pt
+    #     kp2[m].pt = tuple(x*0.5+100 for x in kp2[m].pt)
+    #     # kp2[m].pt = tuple([10*m, 10])
+    #     print kp2[m].pt
+        # kp1[m].pt += 10.0
+
+
+    # Draw first 10 matches.
+    # cv2.drawMatchesKnn(img1,kp1,img2,kp2, matches[:10], outImg=img3, flags=2)
+    cv2.drawMatchesKnn(im1,kp1,im2,kp2, good, outImg=imBoth, flags=2)
+
+
+    # img3 = drawMatches(img1,kp1,img2,kp2,matches[:20])
+
+    # vytvor si dvojice sam - ze znalosti rohu ctverce
+
+    print(str(len(des1)) + " = number of tag descriptor")
+    print(str(len(des2)) + " = number of descriptor in scene image" )
+    print(str(len(matches)) + "= all matches" )
+    print(str(len(good)) + " = good matches")
+
+    # print goodIdx
+    # MIN_MATCH_COUNT = 4
+    #
+    # if len(good)>MIN_MATCH_COUNT:
+    #     # src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+    #     # dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
+    #
+    #     src_pts = np.float32([ kp1[m].pt for m in goodIdx ]).reshape(-1,1,2)
+    #     dst_pts = np.float32([ kp2[m].pt for m in goodIdx ]).reshape(-1,1,2)
+    #
+    # else:
+    #     print "Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT)
+    #     matchesMask = None
+    #     exit
+
+    return imBoth
 
 def rotate(image, angle, center = None, scale = 1.0):
     (h, w) = image.shape[:2]
@@ -110,101 +181,180 @@ def gaussIt(im):
     # return cv2.blur(im,(a,a))
     a = 75
     return cv2.bilateralFilter(im,9,a,a)
+
+def joinIm(im1,im2):
+
+    hDiff = im2.shape[0] - im1.shape[0]
+    im1a = cv2.copyMakeBorder(im1,0,hDiff,0,0,cv2.BORDER_CONSTANT, value=0)
+
+    imBoth = cv2.cvtColor(np.hstack([im1a,im2]), cv2.COLOR_GRAY2RGB)
+    return imBoth
+
+def drawDots(im, dots, numbers=1):
+    i = 0
+    for dot in dots:
+        print dot
+
+        pt = [int(dot[0]),int(dot[1])]
+        # col = (255, 0, 0)
+        col = 128
+        cv2.circle(im, tuple(pt), 4, col, 1)
+        if numbers == 1:
+            # font = cv2.FONT_HERSHEY_SIMPLEX
+            font = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
+            cv2.putText(im,str(i), tuple([ d+10 for d in pt ]), font, 1.7, col, cv2.LINE_AA )
+        i += 1
+    return im
+
+def findClosestToMinAreaRect(im,mc,box,cnt):
+    # find points from countour which are the closest (L2SQR) to minAreaRect!
+    norm = cv2.NORM_L2SQR
+    mc = np.float32(mc)
+    corner_pts = []
+    [corner_pts.append(box[i]) for i in range(0,4)] # append 4 mc
+    #corner.append [mc, dist]
+    corner_pts = np.float32(corner_pts)
+    # print corner_pts
+
+    distSq = [] # distance between corner_pts and minAreaRect pts
+    [distSq.append(cv2.norm(mc, corner_pt, norm)) for corner_pt in corner_pts] # initialize to distance to center (mc)
+    distSq = np.float32(distSq)
+    print distSq
+
+    cnt = np.float32(cnt)
+    print 'starting to count'
+
+    for pt in cnt:
+        cnt_pt = pt[0]
+        for i in range(0,4):
+
+            dist = cv2.norm(cnt_pt, box[i], norm)
+            if dist < distSq[i]:
+                distSq[i] = dist
+                corner_pts[i] = cnt_pt
+
+                print 'cnt_pt =' + str(cnt_pt)
+                print 'corner_pts['+str(i)+'] = ' + str(corner_pts[i])
+                print 'dist = ' + str(dist)
+                print 'distSq[i] = ' + str(distSq[i])
+                print 'took new cnt_pt which is closer '+ str(dist) + ' than the previous ' +str(distSq[i])
+                print '____________________________________________________'
+    # draw minAreaRect closest rectangle
+    color = 150
+    int_box = np.int0(corner_pts)
+    cv2.drawContours(im,[int_box],0,color,1)
+    return corner_pts
+
+def findFarthestFromCenter(im,mc,box,cnt):
+    # find points from countour which are the closest (L2SQR) to minAreaRect!
+    norm = cv2.NORM_L2SQR
+    mc = np.float32(mc)
+    corner_pts = []
+    [corner_pts.append(mc) for i in range(0,4)] # append 4 mc
+    #corner.append [mc, dist]
+    corner_pts = np.float32(corner_pts)
+    # print corner_pts
+
+    distSq = [0] *4 # distance between corner_pts and mc
+    distSq = np.float32(distSq)
+    print distSq
+
+    cnt = np.float32(cnt)
+    print 'starting to count'
+
+    for pt in cnt:
+        cnt_pt = pt[0]
+        for i in range(0,4):
+
+            dist = cv2.norm(cnt_pt, mc, norm)
+            if dist > distSq[i]:
+                distSq[i] = dist
+                corner_pts[i] = cnt_pt
+
+                print 'cnt_pt =' + str(cnt_pt)
+                print 'corner_pts['+str(i)+'] = ' + str(corner_pts[i])
+                print 'dist = ' + str(dist)
+                print 'distSq[i] = ' + str(distSq[i])
+                print 'took new cnt_pt which is farther ' + str(dist) + ' than the previous ' +str(distSq[i])
+                print '____________________________________________________'
+    # draw minAreaRect closest rectangle
+    color = 150
+    int_box = np.int0(corner_pts)
+    cv2.drawContours(im,[int_box],0,color,1)
+    return corner_pts
+
+def findSquare(im):
+
+    _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    for q in np.arange(len(contours)):
+        cnt = contours[q]
+        # moments
+        mu = cv2.moments(cnt)
+        leftTop = tuple(cnt[0, 0])
+        if mu['m00'] == 0: continue
+        mc = (int(mu['m10'] / mu['m00']), int(mu['m01'] / mu['m00']))
+        # first pixel
+        color = 128
+        cv2.circle(im, leftTop, 4, color, -1, 8, 0)
+        # centroid
+        color = 200
+        cv2.circle(im, mc, 4, color, -1, 8, 0)
+
+        # non-rotated boundingbox
+        # x, y, w, h = cv2.boundingRect(cnt)
+        # cv2.rectangle(im, (x, y), (x + w, y + h), color, 2)
+
+        # rotated boundingbox
+
+        rect = cv2.minAreaRect(cnt)
+        box = cv2.boxPoints(rect)
+        # draw rotated minAreaRect boundingBox
+        # color = 150
+        # int_box = np.int0(box)
+        # cv2.drawContours(im,[int_box],0,color,1)
+
+        # leftmost etc
+        # dst_pts.extend([cnt[cnt[:,:,0].argmin()][0]] ) # leftmost
+        # dst_pts.extend([cnt[cnt[:,:,1].argmin()][0]] ) # topmost
+        # dst_pts.extend([cnt[cnt[:,:,0].argmax()][0]] ) # rightmost
+        # dst_pts.extend([cnt[cnt[:,:,1].argmax()][0]] ) # bottommost
+
+        corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
+        # corner_pts = findFarthestFromCenter(im,mc,box,cnt)
+    return corner_pts
+
 if __name__ == '__main__':
     bgColor = 0 # black
     # bgColor = 255 # white
 
-    [im1, bSize] = makeBorder(readIm('invnoborder', '2L'), bgColor)
+    # [im1, bSize] = makeBorder(readIm('invnoborder', '2L'), bgColor)
+    im1 = readIm('invnoborder', '2L')
+    
+    bSize = 40
+    innerSize = 170
     im2 = readIm('space', '2L')
 
     im1 = rotate(im1,180)
     # img1 = rotate(img1,90)
 
-    # Initiate ORB detector
-    # orb = cv2.ORB_create( nfeatures = 300 )
-    orb = cv2.ORB_create( nfeatures = 400 )
-
-    # find the keypoints and descriptors with SIFT
-    kp1, des1 = orb.detectAndCompute(im1,None)
-    kp2, des2 = orb.detectAndCompute(im2,None)
-
-    # create BFMatcher object
-    bf = cv2.BFMatcher()
-    # Match descriptors.
-    matches = bf.knnMatch( des1,des2, k=2)
-
-    # Apply ratio test
-    good = []
-    goodIdx = []
-    idx = 0
-    const = 0.80
-    # const = 0.90
-
-    for m,n in matches:
-        if m.distance < const*n.distance:
-            good.append([m])
-            goodIdx.append(idx)
-        idx += 1
-
-    hDiff = im2.shape[0] - im1.shape[0]
-    img1a = cv2.copyMakeBorder(im1,0,hDiff,0,0,cv2.BORDER_CONSTANT, value=0)
-
-    imgBoth = cv2.cvtColor(np.hstack([img1a,im2]), cv2.COLOR_GRAY2RGB)
-    # img3 = []
-
-    # change kp points - useless i will not use knnMatch and orb..
-    # for m in goodIdx:
-    #     # kp1[m].pt = tuple(x+100 for x in kp1[m].pt)
-    #     print m
-    #     print kp2[m].pt
-    #     kp2[m].pt = tuple(x*0.5+100 for x in kp2[m].pt)
-    #     # kp2[m].pt = tuple([10*m, 10])
-    #     print kp2[m].pt
-        # kp1[m].pt += 10.0
-
-
-    # Draw first 10 matches.
-    # cv2.drawMatchesKnn(img1,kp1,img2,kp2, matches[:10], outImg=img3, flags=2)
-    cv2.drawMatchesKnn(im1,kp1,im2,kp2, good, outImg=imgBoth, flags=2)
-
-
-    # img3 = drawMatches(img1,kp1,img2,kp2,matches[:20])
-
-    # vytvor si dvojice sam - ze znalosti rohu ctverce
-
-    print(str(len(des1)) + " = number of tag descriptor")
-    print(str(len(des2)) + " = number of descriptor in scene image" )
-    print(str(len(matches)) + "= all matches" )
-    print(str(len(good)) + " = good matches")
-
-    print goodIdx
-    MIN_MATCH_COUNT = 4
-
-    if len(good)>MIN_MATCH_COUNT:
-        # src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
-        # dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
-
-        src_pts = np.float32([ kp1[m].pt for m in goodIdx ]).reshape(-1,1,2)
-        dst_pts = np.float32([ kp2[m].pt for m in goodIdx ]).reshape(-1,1,2)
-
-        print src_pts
-
+    if 1:
+        aS = bSize
+        aB = bSize + innerSize
         src_pts = []
-        for x in range(1,3):
-            for y in range(1,3):
-                src_pts.extend(np.float32( [[ x*bSize, y*bSize ]] ))
-
-        src_pts = np.array(src_pts)
+        pts = [[aS, aS], [aS, aB], [aB, aB], [aB, aS]]
+        [src_pts.append(pt) for pt in pts]
+        src_pts = np.float32(src_pts)
         print src_pts
+        im1 = drawDots(im1,src_pts)
 
-        bSize = bSize
-        dst_pts = []
-        for x in range(1,3):
-            for y in range(1,3):
-                dst_pts.extend(np.float32( [[ x*bSize, y*bSize ]] ))
-
-        dst_pts = np.array(dst_pts)
+        dst_pts = findSquare(im2)
+        # dst_pts = np.array( findSquare(im2))
+        # a = dst_pts[0].copy()
+        # dst_pts[0] = dst_pts[1]
+        # dst_pts[1] = a
         print dst_pts
+        im2 = drawDots(im2,dst_pts)
 
 
         M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
@@ -219,27 +369,31 @@ if __name__ == '__main__':
         # img3 = cv2.polylines(img2,[np.int32(dst)],True,128,3, cv2.LINE_AA)
         im3 = cv2.polylines(im2,[np.int32(dst)],True,128,3, cv2.LINE_8)
 
-    else:
-        print "Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT)
-        matchesMask = None
-        exit
 
+    print(str(M) + " = Homeography transformation matrix")
+    #
     # p0, p1 = np.float32((p0, p1))
     # H, status = cv2.findHomography(p0, p1, cv2.RANSAC, 3.0)
 
-    print(str(M) + " = Homeography transformation matrix")
 
-    im3 =  cv2.cvtColor(im3 , cv2.COLOR_GRAY2RGB)
-    imAll = np.hstack([imgBoth,im3])
+    imBoth = joinIm(im1,im2)
+    # im3 =  cv2.cvtColor(im3 , cv2.COLOR_GRAY2RGB)
+    # imAll = np.hstack([imBoth,im3])
+    imAll = imBoth
 
-    a = 0.5
-    imAll = cv2.resize(imAll, (0, 0), fx=a, fy=a)
+    # a = 0.5
+    # imAll = cv2.resize(imAll, (0, 0), fx=a, fy=a)
+
     cv2.imshow('images',imAll)
     # plt.imshow(imgAll, cmap = mpl.cm.Greys_r)
     # plt.xticks([]), plt.yticks([])  # to hide tick values on X and Y axis
     # plt.show()
 
+    a = 0
     while 1:
+        a = a + 1
+        if a > 200:
+            break
         k = cv2.waitKey(30) & 0xff
         if k == ord('q'):
             break
