@@ -183,12 +183,14 @@ def gaussIt(im):
     return cv2.bilateralFilter(im,9,a,a)
 
 def joinIm(im1,im2):
-
     hDiff = im2.shape[0] - im1.shape[0]
     im1a = cv2.copyMakeBorder(im1,0,hDiff,0,0,cv2.BORDER_CONSTANT, value=0)
 
-    imBoth = cv2.cvtColor(np.hstack([im1a,im2]), cv2.COLOR_GRAY2RGB)
+    imBoth = np.hstack([im1a,im2])
     return imBoth
+
+def colorify(im):
+    return cv2.cvtColor(im, cv2.COLOR_GRAY2RGB)
 
 def drawDots(im, dots, numbers=1):
     i = 0
@@ -283,6 +285,47 @@ def findFarthestFromCenter(im,mc,box,cnt):
     cv2.drawContours(im,[int_box],0,color,1)
     return corner_pts
 
+def findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt):
+   # find points from countour which are the closest (L2SQR) to minAreaRect & also farthest from center
+    norm = cv2.NORM_L2SQR
+    mc = np.float32(mc)
+    corner_pts = []
+    [corner_pts.append(box[i]) for i in range(0,4)] # append 4 mc
+    #corner.append [mc, dist]
+    corner_pts = np.float32(corner_pts)
+    # print corner_pts
+
+
+    distSq = [0] *4 # distance = distFromCenter - distFromMinBox
+    distSq = np.float32(distSq)
+    print distSq
+
+    cnt = np.float32(cnt)
+    print 'starting to count'
+
+    for pt in cnt:
+        cnt_pt = pt[0]
+        for i in range(0,4):
+
+            distFromMinBox = cv2.norm(cnt_pt, box[i], norm)
+            distFromCenter = cv2.norm(cnt_pt, mc, norm)
+            dist = distFromCenter - distFromMinBox
+            if dist > distSq[i]:
+                distSq[i] = dist
+                corner_pts[i] = cnt_pt
+
+                print 'cnt_pt =' + str(cnt_pt)
+                print 'corner_pts['+str(i)+'] = ' + str(corner_pts[i])
+                print 'dist = ' + str(dist)
+                print 'distSq[i] = ' + str(distSq[i])
+                print 'took new cnt_pt which is closer '+ str(dist) + ' than the previous ' +str(distSq[i])
+                print '____________________________________________________'
+    # draw minAreaRect closest rectangle
+    color = 150
+    int_box = np.int0(corner_pts)
+    cv2.drawContours(im,[int_box],0,color,1)
+    return corner_pts
+
 def findSquare(im):
 
     _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -320,9 +363,15 @@ def findSquare(im):
         # dst_pts.extend([cnt[cnt[:,:,0].argmax()][0]] ) # rightmost
         # dst_pts.extend([cnt[cnt[:,:,1].argmax()][0]] ) # bottommost
 
-        corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
+        # corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
+        corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt)
         # corner_pts = findFarthestFromCenter(im,mc,box,cnt)
     return corner_pts
+
+def matDot(A,B):
+    C = np.eye(3,3)
+    np.dot(A,B,C)
+    return C
 
 if __name__ == '__main__':
     bgColor = 0 # black
@@ -330,15 +379,17 @@ if __name__ == '__main__':
 
     # [im1, bSize] = makeBorder(readIm('invnoborder', '2L'), bgColor)
     im1 = readIm('invnoborder', '2L')
-    
+
+
     bSize = 40
     innerSize = 170
     im2 = readIm('space', '2L')
+    im2orig = im2.copy()
 
-    im1 = rotate(im1,180)
-    # img1 = rotate(img1,90)
+    # im1 = rotate(im1,180)
+    im1 = rotate(im1,90)
 
-    if 1:
+    if 1: # find homeograhpy matrix
         aS = bSize
         aB = bSize + innerSize
         src_pts = []
@@ -349,37 +400,89 @@ if __name__ == '__main__':
         im1 = drawDots(im1,src_pts)
 
         dst_pts = findSquare(im2)
-        # dst_pts = np.array( findSquare(im2))
-        # a = dst_pts[0].copy()
-        # dst_pts[0] = dst_pts[1]
-        # dst_pts[1] = a
         print dst_pts
         im2 = drawDots(im2,dst_pts)
 
 
-        M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+        mWarp, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
         matchesMask = mask.ravel().tolist()
 
         h,w = im1.shape
         pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
-        # M = np.array([[1,0,0],[0,1,0],[0,0,1]])
-        dst = cv2.perspectiveTransform(pts, M)
+        dst = cv2.perspectiveTransform(pts, mWarp)
 
-        # img2 = cv2.polylines(img2,[np.int32(dst)],True,255,3, cv2.LINE_AA)
-        # img3 = cv2.polylines(img2,[np.int32(dst)],True,128,3, cv2.LINE_AA)
         im3 = cv2.polylines(im2,[np.int32(dst)],True,128,3, cv2.LINE_8)
 
 
-    print(str(M) + " = Homeography transformation matrix")
+    print(str(mWarp) + " = Homeography transformation matrix")
+
+    # apply homeography matrix
+    im1copy = im1.copy()
+    im1copy2 = im1.copy()
+    # print im2.shape
+    # print im1copy.shape
+    # cv2.warpPerspective(im2, im1copy, warpMatrix, im1copy.size(), cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
+    mInverse = np.linalg.inv(mWarp)
+    # np.inv(warpMatrix, inverseMatrix )
+    im1copy = cv2.warpPerspective(im2orig, mInverse, im1copy.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
+
+
+    # find affine rotation
+    angle = np.deg2rad(90)
+    cos = np.cos(angle)
+    sin = np.sin(angle)
+    # rotMatrix = np.array([[cos, -sin, 0], [sin, cos, 0], [0,0,1] ])
+    mRot = np.array([
+        [cos,   -sin,   0],
+        [sin,   cos,    0],
+        [0,     0,      1] ])
+    # rotMatrix = np.eye(3,3)
+
+    dx = -im1.shape[0] / 2
+    dy = -im1.shape[1] / 2
+
+    dx = -im2.shape[0] / 2
+    dy = -im2.shape[1] / 2
+    # dx = 10
+    # dy = 10
+    mTra = np.array([
+        [1,0,dx],
+        [0,1,dy],
+        [0,0,1]
+    ])
+    mTraInv = np.linalg.inv(mTra)
+
+
+    mFinal = mInverse.copy()
+    # mFinal = np.eye(3,3)
+
+    # np.dot(mFinal, mTra, mFinal )
+    # np.dot(mFinal, mRot, mFinal)
+    # np.dot(mFinal, mTraInv, mFinal )
+    # np.dot(mInverse, mFinal, mFinal)
+
+    # mFinal = matDot(mInverse,mFinal)
+
+    # mFinal = matDot(mInverse, mFinal)
+    # mFinal = matDot(mFinal, mTra)
+    # # mFinal = matDot(mFinal, mRot)
+    # mFinal = matDot(mFinal, mTraInv)
     #
-    # p0, p1 = np.float32((p0, p1))
-    # H, status = cv2.findHomography(p0, p1, cv2.RANSAC, 3.0)
+    # print "mInverse"
+    # print mInverse
+    # print "mRot"
+    # print mRot
+    # print "mFinal"
+    # print mFinal
 
 
-    imBoth = joinIm(im1,im2)
+    im1copy2 = cv2.warpPerspective(im2orig, mFinal, im1copy.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
+    # cv2.imshow('aa',im1copy)
+
+    imBoth = joinIm(im1copy2,joinIm(im1copy,joinIm(im1,im2)))
     # im3 =  cv2.cvtColor(im3 , cv2.COLOR_GRAY2RGB)
     # imAll = np.hstack([imBoth,im3])
-    imAll = imBoth
+    imAll = colorify(imBoth)
 
     # a = 0.5
     # imAll = cv2.resize(imAll, (0, 0), fx=a, fy=a)
