@@ -14,15 +14,17 @@ global tracker, ar_verts, ar_edges
 def imclearborder(imgBW, radius):
     # Given a black and white image, first find all of its contours
     imgBWcopy = imgBW.copy()
-    _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
 
+    # hierarchy = Next, Previous, First_Child, Parent
     # Get dimensions of image
     imgRows = imgBW.shape[0]
     imgCols = imgBW.shape[1]
 
-    contourList = []  # ID list of contours that touch the border
-
+    cTouching = []  # indexes of contours that touch the border
+    cInsideTouching = [] # indexes that are inside of contours that touch the border
     # For each contour...
     for idx in np.arange(len(contours)):
         # Get the i'th contour
@@ -38,12 +40,21 @@ def imclearborder(imgBW, radius):
             check2 = (colCnt >= 0 and colCnt < radius) or (colCnt >= imgCols - 1 - radius and colCnt < imgCols)
 
             if check1 or check2:
-                contourList.append(idx)
-                break
+                cTouching.append(idx)
+                # add children inside cInsideTouching
+                # q = hierarchy[idx][2] # first child index
+                # while q != -1:
+                #     cInsideTouching.append(q)
+                #     q = hierarchy[q][0] # next
+                # break
 
-    for idx in contourList:
-        color = 0
-        cv2.drawContours(imgBWcopy, contours, idx, color, -1)
+    # create mask to delete (not touching the child contours insides)
+    for idx in cTouching:
+        col = 0
+        cv2.drawContours(imgBWcopy, contours, idx, col, -1)
+    for idx in cInsideTouching:
+        col = 255
+        cv2.drawContours(imgBWcopy, contours, idx, col, -1)
 
     return imgBWcopy
 
@@ -73,59 +84,46 @@ def findTags(imIn):
     # Given a black and white image, first find all of its contours
     im = imIn.copy()
     # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
-
     _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
-
-    # # Get dimensions of image
-    # imgRows = imIn.shape[0]
-    # imgCols = imIn.shape[1]
-
-    # contourList = [] # list of pair-lists
-
-    # imTags = []
     imTags = [];
-    #  For each contour...
-    # sift = cv2.xfeatures2d.SIFT_create()
-    # kp = sift.detect(im, None)
 
     # find bounding boxes etc
     for q in np.arange(len(contours)):
-        # Get the i'th contour
         cnt = contours[q]
+
         # moments
         mu = cv2.moments(cnt)
         leftTop = tuple(cnt[0, 0])
         if mu['m00'] == 0: continue
         mc = (int(mu['m10'] / mu['m00']), int(mu['m01'] / mu['m00']))
-        # first pixel
-        color = 128
-        cv2.circle(im, leftTop, 4, color, -1, 8, 0)
+
         # centroid
         color = 200
         cv2.circle(im, mc, 4, color, -1, 8, 0)
 
         # non-rotated boundingbox
         x, y, w, h = cv2.boundingRect(cnt)
-        cv2.rectangle(im, (x, y), (x + w, y + h), color, 2)
+        # cv2.rectangle(im, (x, y), (x + w, y + h), color, 2)
+
+        # slice out imTag
+        imTag = imIn[y:y + h, x:x + w]
+
 
         # rotated boundingbox
         color = 122
         rect = cv2.minAreaRect(cnt)
         box = cv2.boxPoints(rect)
-        box = np.int0(box)
-
-        # mateches
+        # box = np.int0(box)
         # im = cv2.drawContours(im,[box],0,color,2)
-        # im = cv2.drawKeypoints(im ,kp,flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-        imTag = imIn[y:y + h, x:x + w]
+
         _, tagCnt, hie = cv2.findContours(imTag.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         if hie == None: continue
         if len(hie) == 0: continue
         hie = hie[0]
         innerSquaresCount = 2
         cntNumMin = 2  # case of joined inner squares
-        cntNumMax = 2 + innerSquaresCount
+        cntNumMax = 1 + innerSquaresCount
 
         if len(hie) >= cntNumMin and len(hie) <= cntNumMax:
             imTags.append(imTag)
@@ -136,7 +134,7 @@ def findTags(imIn):
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #### bwareaopen definition
-def bwareaopen(imgBW, areaPixels):
+def bwareaopen(imgBW, areaPixels,col = 0):
     # Given a black and white image, first find all of its contours
     imgBWcopy = imgBW.copy()
     _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
@@ -145,8 +143,7 @@ def bwareaopen(imgBW, areaPixels):
     for idx in np.arange(len(contours)):
         area = cv2.contourArea(contours[idx])
         if (area >= 0 and area <= areaPixels):
-            color = 64
-            cv2.drawContours(imgBWcopy, contours, idx, color, -1)
+            cv2.drawContours(imgBWcopy, contours, idx, col, -1)
     return imgBWcopy
 
 
@@ -241,13 +238,14 @@ def stepCV(cap):
     clear = cv2.copyMakeBorder(clear[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
     # cv2.findContours(otsu
 
+    im = clear
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # bwareaopen
-    im = clear
-    opened = bwareaopen(im, 101)
+    col = 0
+    opened = bwareaopen(im, 10*10, col)
+    im = opened
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # imfill
-    im = clear
 
     flooded = im.copy()
 
@@ -257,10 +255,9 @@ def stepCV(cap):
     seed = None
 
     cv2.floodFill(flooded, mask, seed, 0, 0, 255, 4)
-
+    im = flooded
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # findTags and put them into imTags list
-    im = flooded
     paired, imTags = findTags(im)
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -297,7 +294,8 @@ def stepCV(cap):
     # show of
 
     # ims = [gray, cl1, blur, thresh, clear, flooded]
-    ims = [gray, cl1, clear, paired]
+    # ims = [gray, cl1, thresh, opened, paired]
+    ims = [gray, cl1, thresh,clear,  flooded, paired]
     imWhole = np.vstack(ims)
 
     # if len(imTags) > 0:
@@ -328,11 +326,6 @@ def loopCV(cap):
     while (True):
         im = stepCV(cap)
         cv2.imshow('image', im)
-        # if __name__ == '__main__':
-        #     cv2.imshow('image', im )
-        # else:
-        #     print "returning im"
-        #     return im
 
         # End loop
         k = cv2.waitKey(30) & 0xff
@@ -341,37 +334,14 @@ def loopCV(cap):
         if k == 27:
             break
 
-            # When everything done, release the capture
+        # When everything done, release the capture
+        cv2.destroyAllWindows()
 
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#### Main program
 
-        # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        #### Main program
+# http://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_thresholding/py_thresholding.html#thresholding
 
-        # http://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_thresholding/py_thresholding.html#thresholding
-
-        # C:\PROG\dev\opencv\opencv\sources\data\haarcascades\
-
-
-def getTracker():
-    #global tracker, ar_verts, ar_edges
-    tracker = PlaneTracker()
-    tag = cv2.imread('tag1.png', 0)
-    # print(tag.shape)
-    rect = [0, 0, tag.shape[0], tag.shape[1]]
-
-    a = max(tag.shape)
-    preparedTag = np.uint8(np.absolute(cv2.Laplacian(tag, cv2.CV_64F)))
-    preparedTag = cv2.copyMakeBorder(preparedTag, a, a, a, a, cv2.BORDER_CONSTANT, value=0)
-    tracker.add_target(preparedTag, rect)
-    print("TAG tracker added here")
-    ar_verts = np.float32([[0, 0, 0], [0, 1, 0], [1, 1, 0], [1, 0, 0],
-                           [0, 0, 1], [0, 1, 1], [1, 1, 1], [1, 0, 1],
-                           [0, 0.5, 2], [1, 0.5, 2]])
-    ar_edges = [(0, 1), (1, 2), (2, 3), (3, 0),
-                (4, 5), (5, 6), (6, 7), (7, 4),
-                (0, 4), (1, 5), (2, 6), (3, 7),
-                (4, 8), (5, 8), (6, 9), (7, 9), (8, 9)]
-    return tracker
 
 if __name__ == '__main__':
     cap = cv2.VideoCapture(0)
