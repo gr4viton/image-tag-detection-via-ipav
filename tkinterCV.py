@@ -14,11 +14,11 @@ import Tkinter as tk
 
 from thisCV import *
 
-from collections import deque
+
 # import sys
 
 # tkinter GUI functions----------------------------------------------------------
-
+global maxLenQueue
 
 def quit_(root, process, *whatever):
     process.terminate()
@@ -61,21 +61,24 @@ def update_all(root, params):
     imlTags, queTag, imlLabel, queue = params
     update_image_tag(imlTags, queTag.get())
 
-    maxLenQueue = 40
-    # update_image(imLabel, queue)
-    # if queue < maxLenQueue:
-    #     queue.popleft()
+
+    # # update_image(imLabel, queue)
+    # if queue.qsize() < maxLenQueue:
     update_image(imlLabel, queue.get())
+
     root.after(0, func=lambda: update_all(root, params))
 
 
 # multiprocessing image processing functions-------------------------------------
 def image_capture(queue, queTag):
+    global maxLenQueue
+    maxLenQueue = 5
     cap = cv2.VideoCapture(0)
     loopingCV = 1
     while loopingCV:
         imWhole, imTags = stepCV(cap)
-        queue.put(imWhole)
+        if queue.qsize() < maxLenQueue:
+            queue.put(imWhole)
         queTag.put(imTags)
     cap.release()
 
@@ -133,10 +136,12 @@ def HOTKEY_setup(root, p):
     pass
 
 if __name__ == '__main__':
-    queue = Queue()
-    queTag = Queue()
-    # queue = deque([])
-    # queTag = deque([])
+    global maxLenQueue
+    maxLenQueue = 1
+
+    queue = Queue( )
+    queTag = Queue( )
+
     print 'queue initialized...'
     root = tk.Tk()
     imlLabel, imlTags = GUI_setup(root)

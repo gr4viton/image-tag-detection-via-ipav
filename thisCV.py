@@ -139,7 +139,7 @@ def findTags(imIn):
         # im = cv2.drawContours(im,[box],0,color,2)
 
         _, tagCnt, hie = cv2.findContours(imTag.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        if hie == None: continue
+        if hie is None: continue
         if len(hie) == 0: continue
         hie = hie[0]
         innerSquaresCount = 2
@@ -221,7 +221,8 @@ def threshIT(im, type):
                 thresh = i
 
         # find otsu's threshold value with OpenCV function
-        ret, otsu = cv2.threshold(im, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        # ret, otsu = cv2.threshold(im, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        ret, otsu = cv2.threshold(im, 0, 255, cv2.THRESH_OTSU)
         return otsu
 
 
@@ -249,10 +250,12 @@ def stepCV(cap):
     im = blur
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ##
-    im = threshIT(blur, 'otsu')
+    thresh = threshIT(im, 'otsu')
 
-    # thresh = im
-    thresh = inverte(im)
+    im = thresh
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # inversion
+    im = inverte(im)
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # imclearborder
     # maks out all contours which are touching the border
