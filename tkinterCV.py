@@ -14,7 +14,7 @@ import Tkinter as tk
 
 from thisCV import *
 
-
+from collections import deque
 # import sys
 
 # tkinter GUI functions----------------------------------------------------------
@@ -61,7 +61,10 @@ def update_all(root, params):
     imlTags, queTag, imlLabel, queue = params
     update_image_tag(imlTags, queTag.get())
 
+    maxLenQueue = 40
     # update_image(imLabel, queue)
+    # if queue < maxLenQueue:
+    #     queue.popleft()
     update_image(imlLabel, queue.get())
     root.after(0, func=lambda: update_all(root, params))
 
@@ -132,6 +135,8 @@ def HOTKEY_setup(root, p):
 if __name__ == '__main__':
     queue = Queue()
     queTag = Queue()
+    # queue = deque([])
+    # queTag = deque([])
     print 'queue initialized...'
     root = tk.Tk()
     imlLabel, imlTags = GUI_setup(root)

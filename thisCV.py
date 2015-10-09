@@ -14,8 +14,10 @@ global tracker, ar_verts, ar_edges
 def imclearborder(imgBW, radius):
     # Given a black and white image, first find all of its contours
     imgBWcopy = imgBW.copy()
-    # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)
+    # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_L1)
+
     # contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
 
     # hierarchy = Next, Previous, First_Child, Parent
@@ -42,19 +44,38 @@ def imclearborder(imgBW, radius):
             if check1 or check2:
                 cTouching.append(idx)
                 # add children inside cInsideTouching
-                # q = hierarchy[idx][2] # first child index
-                # while q != -1:
-                #     cInsideTouching.append(q)
-                #     q = hierarchy[q][0] # next
-                # break
+                q = hierarchy[0][idx][2] # first child index
+                while q != -1:
+                    cInsideTouching.append(q)
+                    q = hierarchy[0,q,0] # next
+                break
+
+    # # delete it from image
+    # for idx in cTouching:
+    #     col = 0
+    #     cv2.drawContours(imgBWcopy, contours, idx, col, -1)
+
 
     # create mask to delete (not touching the child contours insides)
+    mask = np.uint8( np.ones(imgBW.shape) )
     for idx in cTouching:
         col = 0
-        cv2.drawContours(imgBWcopy, contours, idx, col, -1)
+        cv2.drawContours(mask, contours, idx, col, -1)
     for idx in cInsideTouching:
-        col = 255
-        cv2.drawContours(imgBWcopy, contours, idx, col, -1)
+        col = 1
+        cv2.drawContours(mask, contours, idx, col, -1)
+
+    # mask2 = mask.copy()
+    # cv2.dilate(mask,mask2)
+
+    # print mask.dtype
+    # print imgBW.dtype
+    cv2.bitwise_and(mask, imgBW, imgBWcopy)
+    imgBWcopy = imgBWcopy * 255
+
+    # print imgBWcopy.dtype
+    # cv2.imshow('ss',imgBWcopy)
+    # waitKeyExit()
 
     return imgBWcopy
 
@@ -229,9 +250,12 @@ def stepCV(cap):
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ##
     im = threshIT(blur, 'otsu')
-    thresh = im
+
+    # thresh = im
+    thresh = inverte(im)
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    # border filler
+    # imclearborder
+    # maks out all contours which are touching the border
     killerBorder = 5
     clear = imclearborder(im, killerBorder)
     a = 5
@@ -241,21 +265,36 @@ def stepCV(cap):
     im = clear
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # bwareaopen
-    col = 0
-    opened = bwareaopen(im, 10*10, col)
-    im = opened
+    # delete too small groups of pixels - with contours - slow
+    # col = 64
+    # opened = bwareaopen(im, 5*5, col)
+    # im = opened
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # imfill
-
+    # flood
     flooded = im.copy()
 
     h, w = im.shape[:2]
-    mask = np.zeros((h + 2, w + 2), np.uint8)
+    # mask = np.zeros((h + 2, w + 2), np.uint8)
+    # a = 2
+    a = 2
+    mask = np.zeros((h + a, w + a), np.uint8)
+    # mask = np.ones((h + a, w + a), np.uint8)
     mask[:] = 0
-    seed = None
+    # seed = None
+    seed = (0,0)
 
-    cv2.floodFill(flooded, mask, seed, 0, 0, 255, 4)
+    # cv2.imshow('ss',mask*255)
+    # waitKeyExit()
+    newVal = 255
+    rect = 4
+    # rect = 8
+    cv2.floodFill(flooded, mask, seed, newVal, 0, 255, rect)
+    mask = np.zeros((h + a, w + a), np.uint8)
+    newVal = 0
+    cv2.floodFill(flooded, mask, seed, newVal, 0, 255, rect)
     im = flooded
+
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # findTags and put them into imTags list
     paired, imTags = findTags(im)
@@ -295,7 +334,8 @@ def stepCV(cap):
 
     # ims = [gray, cl1, blur, thresh, clear, flooded]
     # ims = [gray, cl1, thresh, opened, paired]
-    ims = [gray, cl1, thresh,clear,  flooded, paired]
+    # ims = [gray, cl1, thresh,clear,  flooded, paired]
+    ims = [cl1, thresh,clear,  flooded, paired]
     imWhole = np.vstack(ims)
 
     # if len(imTags) > 0:
@@ -337,6 +377,13 @@ def loopCV(cap):
         # When everything done, release the capture
         cv2.destroyAllWindows()
 
+def waitKeyExit():
+    while True:
+        k = cv2.waitKey(30) & 0xff
+        if k == ord('q'):
+            break
+        if k == 27:
+            break
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #### Main program
 
