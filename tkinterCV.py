@@ -3,14 +3,17 @@
 # http://stackoverflow.com/questions/17073227/display-an-opencv-video-in-tkinter-using-multiprocessing
 import array
 
+
+# pip3.4 install pillow
+
 import numpy as np
 from multiprocessing import Process, Queue
-from Queue import Empty
+# from Queue import Empty
 import cv2
 # import cv2.cv as cv
 from PIL import Image, ImageTk
 import time
-import Tkinter as tk
+import tkinter as tk
 
 from thisCV import *
 
@@ -33,8 +36,8 @@ def update_image(image_label, frame):
     if len(frame.shape) == 2:
         im = cv2.cvtColor(frame, cv2.COLOR_GRAY2RGB)
     else:
-        print frame.shape
-        print len(frame)
+        print(frame.shape)
+        print(len(frame))
         im = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         #im = frame
 
@@ -85,7 +88,7 @@ def image_capture(queue, queTag):
 
 def GUI_setup(root):
     # GUI Items
-    # print 'GUI initialized...'
+    # print('GUI initialized...')
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     #:: frAddList
     # ____________________________________________________ frames
@@ -122,7 +125,7 @@ def GUI_setup(root):
     slTags.grid(row=2, column=2, rowspan=1, columnspan=1, sticky=tk.NSEW )
     imlTags.grid(row=3, column=2, rowspan=1, columnspan=1, sticky=tk.NSEW )
 
-    print 'GUI initialized...'
+    print('GUI initialized...')
 
     #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # Key binding
@@ -152,7 +155,7 @@ if __name__ == '__main__':
     HOTKEY_setup(root, p)
 
     p.start()
-    print 'image capture process has started...'
+    print('image capture process has started...')
 
     root.minsize(width=640, height=100)
 
@@ -161,9 +164,10 @@ if __name__ == '__main__':
     root.after(0, func=lambda: update_all(root, params))
 
 
-    print 'root.after was called...'
+    print('root.after was called...')
     root.mainloop()
-    print 'mainloop exit'
+    print('mainloop exit')
     p.terminate()
     # p.join()
-    print 'image capture process exit'
+    print('image capture process exit')
+

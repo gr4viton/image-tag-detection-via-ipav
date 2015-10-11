@@ -170,7 +170,7 @@ def bwareaopen(imgBW, areaPixels,col = 0):
 
 def update(i):
     tbValue = i
-    print i
+    print(i)
 
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -205,7 +205,7 @@ def threshIT(im, type):
         fn_min = np.inf
         thresh = -1
 
-        for i in xrange(1, 256):
+        for i in range(1, 256):
             p1, p2 = np.hsplit(hist_norm, [i])  # probabilities
             q1, q2 = Q[i], Q[255] - Q[i]  # cum sum of classes
             b1, b2 = np.hsplit(bins, [i])  # weights
@@ -326,7 +326,7 @@ def stepCV(cap):
         #     for (x, y) in np.int32(tr.p1):
         #         cv2.circle(vis, (x, y), 2, color)
         #     draw_overlay(vis, tr)
-        #     print "drawn Contours"
+        #     print("drawn Contours")
             # H, status = cv2.findHomography(p0, p1, cv2., 3.0) # cv2.RANSAC not needed
 
     imTags = vis
@@ -350,7 +350,7 @@ def stepCV(cap):
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 def findRotation(imTags):
-    # print len(imTags)
+    # print(len(imTags))
     # if len(imTags) == 0:
     #     return
     im = imTags
@@ -366,10 +366,15 @@ def findRotation(imTags):
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 def loopCV(cap):
-    print "loopCV started"
+    print("loopCV started")
     while (True):
         im = stepCV(cap)
         cv2.imshow('image', im)
+        # if __name__ == '__main__':
+        #     cv2.imshow('image', im )
+        # else:
+        #     print("returning im")
+        #     return im
 
         # End loop
         k = cv2.waitKey(30) & 0xff
@@ -406,3 +411,4 @@ if __name__ == '__main__':
     loopCV(cap)
     cap.release()
     cv2.destroyAllWindows()
+

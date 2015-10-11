@@ -108,11 +108,11 @@ def orbDesc(im1,im2, imBoth):
     # change kp points - useless i will not use knnMatch and orb..
     # for m in goodIdx:
     #     # kp1[m].pt = tuple(x+100 for x in kp1[m].pt)
-    #     print m
-    #     print kp2[m].pt
+    #     print(m)
+    #     print(kp2[m].pt)
     #     kp2[m].pt = tuple(x*0.5+100 for x in kp2[m].pt)
     #     # kp2[m].pt = tuple([10*m, 10])
-    #     print kp2[m].pt
+    #     print(kp2[m].pt)
         # kp1[m].pt += 10.0
 
 
@@ -130,7 +130,7 @@ def orbDesc(im1,im2, imBoth):
     print(str(len(matches)) + "= all matches" )
     print(str(len(good)) + " = good matches")
 
-    # print goodIdx
+    # print(goodIdx)
     # MIN_MATCH_COUNT = 4
     #
     # if len(good)>MIN_MATCH_COUNT:
@@ -141,7 +141,7 @@ def orbDesc(im1,im2, imBoth):
     #     dst_pts = np.float32([ kp2[m].pt for m in goodIdx ]).reshape(-1,1,2)
     #
     # else:
-    #     print "Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT)
+    #     print("Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT))
     #     matchesMask = None
     #     exit
 
@@ -160,7 +160,7 @@ def rotate(image, angle, center = None, scale = 1.0):
     return rotated
 
 def readIm(pre, tag):
-    dIm = 'd:/WORK/2015/2015_09_08 - multikoptera/pycMulti/pic/'
+    dIm = './pic/'
     fIm =  pre + '_' + tag + '.png'
     im = cv2.imread(dIm + fIm,0)
     if im is not None:
@@ -195,7 +195,7 @@ def colorify(im):
 def drawDots(im, dots, numbers=1):
     i = 0
     for dot in dots:
-        print dot
+        #print(dot)
 
         pt = [int(dot[0]),int(dot[1])]
         # col = (255, 0, 0)
@@ -216,15 +216,15 @@ def findClosestToMinAreaRect(im,mc,box,cnt):
     [corner_pts.append(box[i]) for i in range(0,4)] # append 4 mc
     #corner.append [mc, dist]
     corner_pts = np.float32(corner_pts)
-    # print corner_pts
+    # print(corner_pts)
 
     distSq = [] # distance between corner_pts and minAreaRect pts
     [distSq.append(cv2.norm(mc, corner_pt, norm)) for corner_pt in corner_pts] # initialize to distance to center (mc)
     distSq = np.float32(distSq)
-    print distSq
+    print(distSq)
 
     cnt = np.float32(cnt)
-    print 'starting to count'
+    print('starting to count')
 
     for pt in cnt:
         cnt_pt = pt[0]
@@ -235,12 +235,12 @@ def findClosestToMinAreaRect(im,mc,box,cnt):
                 distSq[i] = dist
                 corner_pts[i] = cnt_pt
 
-                print 'cnt_pt =' + str(cnt_pt)
-                print 'corner_pts['+str(i)+'] = ' + str(corner_pts[i])
-                print 'dist = ' + str(dist)
-                print 'distSq[i] = ' + str(distSq[i])
-                print 'took new cnt_pt which is closer '+ str(dist) + ' than the previous ' +str(distSq[i])
-                print '____________________________________________________'
+                print('cnt_pt =' + str(cnt_pt))
+                print('corner_pts['+str(i)+'] = ' + str(corner_pts[i]))
+                print('dist = ' + str(dist))
+                print('distSq[i] = ' + str(distSq[i]))
+                print('took new cnt_pt which is closer '+ str(dist) + ' than the previous ' +str(distSq[i]))
+                print('____________________________________________________')
     # draw minAreaRect closest rectangle
     color = 150
     int_box = np.int0(corner_pts)
@@ -255,14 +255,14 @@ def findFarthestFromCenter(im,mc,box,cnt):
     [corner_pts.append(mc) for i in range(0,4)] # append 4 mc
     #corner.append [mc, dist]
     corner_pts = np.float32(corner_pts)
-    # print corner_pts
+    # print(corner_pts)
 
     distSq = [0] *4 # distance between corner_pts and mc
     distSq = np.float32(distSq)
-    print distSq
+    print(distSq)
 
     cnt = np.float32(cnt)
-    print 'starting to count'
+    print('starting to count')
 
     for pt in cnt:
         cnt_pt = pt[0]
@@ -273,12 +273,12 @@ def findFarthestFromCenter(im,mc,box,cnt):
                 distSq[i] = dist
                 corner_pts[i] = cnt_pt
 
-                print 'cnt_pt =' + str(cnt_pt)
-                print 'corner_pts['+str(i)+'] = ' + str(corner_pts[i])
-                print 'dist = ' + str(dist)
-                print 'distSq[i] = ' + str(distSq[i])
-                print 'took new cnt_pt which is farther ' + str(dist) + ' than the previous ' +str(distSq[i])
-                print '____________________________________________________'
+                print('cnt_pt =' + str(cnt_pt))
+                print('corner_pts['+str(i)+'] = ' + str(corner_pts[i]))
+                print('dist = ' + str(dist))
+                print('distSq[i] = ' + str(distSq[i]))
+                print('took new cnt_pt which is farther ' + str(dist) + ' than the previous ' +str(distSq[i]))
+                print('____________________________________________________')
     # draw minAreaRect closest rectangle
     color = 150
     int_box = np.int0(corner_pts)
@@ -293,15 +293,15 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt):
     [corner_pts.append(box[i]) for i in range(0,4)] # append 4 mc
     #corner.append [mc, dist]
     corner_pts = np.float32(corner_pts)
-    # print corner_pts
+    # print(corner_pts)
 
 
     distSq = [0] *4 # distance = distFromCenter - distFromMinBox
     distSq = np.float32(distSq)
-    print distSq
+    print(distSq)
 
     cnt = np.float32(cnt)
-    print 'starting to count'
+    print('starting to count')
 
     for pt in cnt:
         cnt_pt = pt[0]
@@ -314,12 +314,12 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt):
                 distSq[i] = dist
                 corner_pts[i] = cnt_pt
 
-                print 'cnt_pt =' + str(cnt_pt)
-                print 'corner_pts['+str(i)+'] = ' + str(corner_pts[i])
-                print 'dist = ' + str(dist)
-                print 'distSq[i] = ' + str(distSq[i])
-                print 'took new cnt_pt which is closer '+ str(dist) + ' than the previous ' +str(distSq[i])
-                print '____________________________________________________'
+                print('cnt_pt =' + str(cnt_pt))
+                print('corner_pts['+str(i)+'] = ' + str(corner_pts[i]))
+                print('dist = ' + str(dist))
+                print('distSq[i] = ' + str(distSq[i]))
+                print('took new cnt_pt which is closer '+ str(dist) + ' than the previous ' +str(distSq[i]))
+                print('____________________________________________________')
     # draw minAreaRect closest rectangle
     color = 150
     int_box = np.int0(corner_pts)
@@ -396,11 +396,11 @@ if __name__ == '__main__':
         pts = [[aS, aS], [aS, aB], [aB, aB], [aB, aS]]
         [src_pts.append(pt) for pt in pts]
         src_pts = np.float32(src_pts)
-        print src_pts
+        print(src_pts)
         im1 = drawDots(im1,src_pts)
 
         dst_pts = findSquare(im2)
-        print dst_pts
+        print(dst_pts)
         im2 = drawDots(im2,dst_pts)
 
 
@@ -419,8 +419,8 @@ if __name__ == '__main__':
     # apply homeography matrix
     im1copy = im1.copy()
     im1copy2 = im1.copy()
-    # print im2.shape
-    # print im1copy.shape
+    # print(im2.shape)
+    # print(im1copy.shape)
     # cv2.warpPerspective(im2, im1copy, warpMatrix, im1copy.size(), cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
     mInverse = np.linalg.inv(mWarp)
     # np.inv(warpMatrix, inverseMatrix )
@@ -468,12 +468,12 @@ if __name__ == '__main__':
     # # mFinal = matDot(mFinal, mRot)
     # mFinal = matDot(mFinal, mTraInv)
     #
-    # print "mInverse"
-    # print mInverse
-    # print "mRot"
-    # print mRot
-    # print "mFinal"
-    # print mFinal
+    # print("mInverse")
+    # print(mInverse)
+    # print("mRot")
+    # print(mRot)
+    # print("mFinal")
+    # print(mFinal)
 
 
     im1copy2 = cv2.warpPerspective(im2orig, mFinal, im1copy.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
@@ -503,3 +503,4 @@ if __name__ == '__main__':
         if k == 27:
             break
     cv2.destroyAllWindows()
+
