@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+import findHomeography as fh
 # from cv2 import xfeatures2d
 # import common
 # from plane_tracker import PlaneTracker
@@ -18,8 +19,6 @@ def imclearborder(imgBW, radius):
     # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)
     # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_L1)
 
-    # contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
-
     # hierarchy = Next, Previous, First_Child, Parent
     # Get dimensions of image
     imgRows = imgBW.shape[0]
@@ -36,8 +35,7 @@ def imclearborder(imgBW, radius):
             rowCnt = pt[0][1]
             colCnt = pt[0][0]
 
-            # If this is within the radius of the border
-            # this contour goes bye bye!
+            # If this is within the radius of the border this contour goes bye bye!
             check1 = (rowCnt >= 0 and rowCnt < radius) or (rowCnt >= imgRows - 1 - radius and rowCnt < imgRows)
             check2 = (colCnt >= 0 and colCnt < radius) or (colCnt >= imgCols - 1 - radius and colCnt < imgCols)
 
@@ -49,12 +47,6 @@ def imclearborder(imgBW, radius):
                     cInsideTouching.append(q)
                     q = hierarchy[0,q,0] # next
                 break
-
-    # # delete it from image
-    # for idx in cTouching:
-    #     col = 0
-    #     cv2.drawContours(imgBWcopy, contours, idx, col, -1)
-
 
     # create mask to delete (not touching the child contours insides)
     mask = np.uint8( np.ones(imgBW.shape) )
@@ -68,15 +60,8 @@ def imclearborder(imgBW, radius):
     # mask2 = mask.copy()
     # cv2.dilate(mask,mask2)
 
-    # print(mask.dtype)
-    # print(imgBW.dtype)
     cv2.bitwise_and(mask, imgBW, imgBWcopy)
     imgBWcopy = imgBWcopy * 255
-
-    # print(imgBWcopy.dtype)
-    # cv2.imshow('ss',imgBWcopy)
-    # waitKeyExit()
-
     return imgBWcopy
 
 
@@ -101,56 +86,76 @@ def draw_overlay(vis, tracked):
     return vis
 
 
-def findTags(imIn):
+def findTags(imScene, cTag):
     # Given a black and white image, first find all of its contours
-    im = imIn.copy()
     # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
-    _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    _, contours, hierarchy = cv2.findContours(imScene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
     # contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
     imTags = [];
 
+
+    imSceneWithDots = imScene.copy()
     # find bounding boxes etc
     for q in np.arange(len(contours)):
         cnt = contours[q]
 
         # moments
         mu = cv2.moments(cnt)
-        leftTop = tuple(cnt[0, 0])
+        # leftTop = tuple(cnt[0, 0])
         if mu['m00'] == 0: continue
         mc = (int(mu['m10'] / mu['m00']), int(mu['m01'] / mu['m00']))
 
         # centroid
         color = 200
-        cv2.circle(im, mc, 4, color, -1, 8, 0)
+        cv2.circle(imSceneWithDots, mc, 4, color, -1, 8, 0)
 
         # non-rotated boundingbox
         x, y, w, h = cv2.boundingRect(cnt)
         # cv2.rectangle(im, (x, y), (x + w, y + h), color, 2)
+        # bounding box slice
+        # imTagInScene = imIn[y:y + h, x:x + w]
 
-        # slice out imTag
-        imTag = imIn[y:y + h, x:x + w]
+        # slice out imTagInScene
+        mask = np.uint8( np.zeros(imScene.shape) )
+        col = 1
+        cv2.drawContours(mask, contours, q, col, -1)
+
+        imTagInScene = np.uint8( np.zeros(imScene.shape) )
+        cv2.bitwise_and(mask, imScene, imTagInScene)
+        imTagInScene = imTagInScene * 255
 
 
         # rotated boundingbox
-        color = 122
-        rect = cv2.minAreaRect(cnt)
-        box = cv2.boxPoints(rect)
+        # color = 122
+        # rect = cv2.minAreaRect(cnt)
+        # box = cv2.boxPoints(rect)
         # box = np.int0(box)
         # im = cv2.drawContours(im,[box],0,color,2)
 
-        _, tagCnt, hie = cv2.findContours(imTag.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        if hie is None: continue
-        if len(hie) == 0: continue
-        hie = hie[0]
-        innerSquaresCount = 2
-        cntNumMin = 2  # case of joined inner squares
-        cntNumMax = 1 + innerSquaresCount
+        # # find out euler number
+        # _, tagCnt, hie = cv2.findContours(imTagInScene.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # if hie is None: continue
+        # if len(hie) == 0: continue
+        # hie = hie[0]
+        # innerSquaresCount = 2
+        # cntNumMin = 2  # case of joined inner squares
+        # cntNumMax = 1 + innerSquaresCount
 
-        if len(hie) >= cntNumMin and len(hie) <= cntNumMax:
-            imTags.append(imTag)
-            # imTags = imIn[y:y+h,x:x+w]
+        # if len(hie) >= cntNumMin and len(hie) <= cntNumMax:
+        #     imTags.append(imTagInScene)
+        #     # imTags = imIn[y:y+h,x:x+w]
 
-    return im, imTags
+        dst_pts, mWarp = fh.findWarpMatrix(imTagInScene, cTag)
+
+        # get inverse transformation matrix
+        try:
+            mInverse = np.linalg.inv(mWarp)
+            imTagRecreated = fh.drawSceneWarpedToTag(mInverse, imTagInScene, cTag.imTagDetect.shape)
+            imTags.append(imTagRecreated )
+        except:
+            print "Probably bad tag detected"
+
+    return imSceneWithDots, imTags
 
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -241,10 +246,7 @@ def floodIt(im,newVal):
     # rect = 8
     cv2.floodFill(im, mask, seed, newVal, 0, 255, rect)
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-def stepCV(cap):
-    flag, frame = cap.read()
-    if flag == 0:
-        return None
+def stepCV(frame, cTag):
     a = 0.5
     im = cv2.resize(frame, (0, 0), fx=a, fy=a)
     # im = frame
@@ -259,12 +261,14 @@ def stepCV(cap):
     im = cl1
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## gaussian blur
-    blur = gaussIt(im,5)
+    blur = gaussIt(im,7)
     im = blur
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ##
+    im = inverte(im.copy())
     thresh = threshIT(im, 'otsu')
     im = thresh
+    im = inverte(im.copy())
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # inversion
     # im = inverte(im.copy())
@@ -273,9 +277,8 @@ def stepCV(cap):
     # maks out all contours which are touching the border
     killerBorder = 5
     killedBorder= imclearborder(im, killerBorder)
-    a = 5
+    a = 1
     killedBorder = cv2.copyMakeBorder(killedBorder[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
-    # cv2.findContours(otsu
 
     im = killedBorder
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -294,7 +297,8 @@ def stepCV(cap):
     im = flooded
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # findTags and put them into imTags list
-    paired, imTags = findTags(im)
+
+    paired, imTags = findTags(im, cTag)
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # track individual tags orientation

@@ -167,6 +167,84 @@ def readIm(pre, tag):
         print("Loaded image: [" + fIm + "] = " + str(im.shape) )
     return im
 
+class C_area:
+    def __init__(self, hw, tl):
+        self.hw = hw
+        self.tl = tl
+
+
+    # def __init__(self, hw, tl, tlFromUpperHW = False):
+    #     self.hw = hw
+    #     if tlFromUpperHW == False:
+    #         self.tl = tl
+    #     else:
+    #         self.tl = self.getTopLeftCentered(tl)
+#
+#     def __init__(self, hw, hwWhole):
+#         self.height = h
+#         self.width = w
+#         [self.top, self.left] = getTopLeftCentered()
+#
+#     def getTopLeftCentered(self,hwUpper):
+#         return self.
+
+
+class C_tag:
+    def __init__(self, strTag):
+        # later have function to get this from actual image
+
+        if strTag == '2L':
+            hwWhole = 250
+            bSymbolArea = 60
+            bDetectArea = 40
+
+            self.whole = C_area([hwWhole ]*2, [0]*2)
+            b = bSymbolArea
+            self.symbolArea = C_area([hwWhole - b*2],[b]*2)
+            b = bDetectArea
+            self.detectArea = C_area([hwWhole - b*2],[b]*2)
+
+            self.imTag = readIm('full', strTag)
+            self.imTagDetect = readIm('invnoborder', strTag)
+
+            self.ptsSymbolArea = getBoxCorners(self.symbolArea.tl[0], self.symbolArea.hw[0] )
+            self.ptsDetectArea = getBoxCorners(self.detectArea.tl[0], self.detectArea.hw[0] )
+    #
+    # def __init__(self, area):
+    #     # later have function to get this from actual image
+    #
+    #     if strTag = '2L':
+    #         self.width = 250
+    #         self.height = 250
+    #         self.left = 0
+    #         self.top = 0
+
+    # if strTag != 2:
+    #     return
+    # # symbol square - most inner = A
+    # # symbol square frame 1 - 2nd most inner = B
+    # side = 250
+    # bSize = 40 # from corner to corner of the inner square
+    # innerSize = side - 2 * bSize # inner square side
+    # bInnerSize = 60 # border from corner of the inner to the corner of the symbol (60 for tag2)
+    # #sizAwidth = sizBwidth
+    # #sizAleft =  sizBleft
+
+def getBoxCorners(boxOffset, boxSide):
+    aS = boxOffset
+    aB = boxOffset + boxSide
+    src_pts = []
+    pts = [[aS, aS], [aS, aB], [aB, aB], [aB, aS]]
+    # [src_pts.append(pt) for pt in pts]
+    return np.float32(pts)
+
+
+def readTag(strTag):
+    cTag = C_tag(strTag)
+    return cTag
+
+
+
 def makeBorder(im, bgColor):
     # rect = [0, 0, im.shape[0], im.shape[1]]
     bs = max(im.shape)
@@ -221,10 +299,10 @@ def findClosestToMinAreaRect(im,mc,box,cnt):
     distSq = [] # distance between corner_pts and minAreaRect pts
     [distSq.append(cv2.norm(mc, corner_pt, norm)) for corner_pt in corner_pts] # initialize to distance to center (mc)
     distSq = np.float32(distSq)
-    print(distSq)
+    # print(distSq)
 
     cnt = np.float32(cnt)
-    print('starting to count')
+    # print('starting to count')
 
     for pt in cnt:
         cnt_pt = pt[0]
@@ -235,12 +313,12 @@ def findClosestToMinAreaRect(im,mc,box,cnt):
                 distSq[i] = dist
                 corner_pts[i] = cnt_pt
 
-                print('cnt_pt =' + str(cnt_pt))
-                print('corner_pts['+str(i)+'] = ' + str(corner_pts[i]))
-                print('dist = ' + str(dist))
-                print('distSq[i] = ' + str(distSq[i]))
-                print('took new cnt_pt which is closer '+ str(dist) + ' than the previous ' +str(distSq[i]))
-                print('____________________________________________________')
+                # print('cnt_pt =' + str(cnt_pt))
+                # print('corner_pts['+str(i)+'] = ' + str(corner_pts[i]))
+                # print('dist = ' + str(dist))
+                # print('distSq[i] = ' + str(distSq[i]))
+                # print('took new cnt_pt which is closer '+ str(dist) + ' than the previous ' +str(distSq[i]))
+                # print('____________________________________________________')
     # draw minAreaRect closest rectangle
     color = 150
     int_box = np.int0(corner_pts)
@@ -259,10 +337,10 @@ def findFarthestFromCenter(im,mc,box,cnt):
 
     distSq = [0] *4 # distance between corner_pts and mc
     distSq = np.float32(distSq)
-    print(distSq)
+    # print(distSq)
 
     cnt = np.float32(cnt)
-    print('starting to count')
+    # print('starting to count')
 
     for pt in cnt:
         cnt_pt = pt[0]
@@ -273,12 +351,12 @@ def findFarthestFromCenter(im,mc,box,cnt):
                 distSq[i] = dist
                 corner_pts[i] = cnt_pt
 
-                print('cnt_pt =' + str(cnt_pt))
-                print('corner_pts['+str(i)+'] = ' + str(corner_pts[i]))
-                print('dist = ' + str(dist))
-                print('distSq[i] = ' + str(distSq[i]))
-                print('took new cnt_pt which is farther ' + str(dist) + ' than the previous ' +str(distSq[i]))
-                print('____________________________________________________')
+                # print('cnt_pt =' + str(cnt_pt))
+                # print('corner_pts['+str(i)+'] = ' + str(corner_pts[i]))
+                # print('dist = ' + str(dist))
+                # print('distSq[i] = ' + str(distSq[i]))
+                # print('took new cnt_pt which is farther ' + str(dist) + ' than the previous ' +str(distSq[i]))
+                # print('____________________________________________________')
     # draw minAreaRect closest rectangle
     color = 150
     int_box = np.int0(corner_pts)
@@ -298,10 +376,10 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt):
 
     distSq = [0] *4 # distance = distFromCenter - distFromMinBox
     distSq = np.float32(distSq)
-    print(distSq)
+    # print(distSq)
 
     cnt = np.float32(cnt)
-    print('starting to count')
+    # print('starting to count')
 
     for pt in cnt:
         cnt_pt = pt[0]
@@ -314,12 +392,12 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt):
                 distSq[i] = dist
                 corner_pts[i] = cnt_pt
 
-                print('cnt_pt =' + str(cnt_pt))
-                print('corner_pts['+str(i)+'] = ' + str(corner_pts[i]))
-                print('dist = ' + str(dist))
-                print('distSq[i] = ' + str(distSq[i]))
-                print('took new cnt_pt which is closer '+ str(dist) + ' than the previous ' +str(distSq[i]))
-                print('____________________________________________________')
+                # print('cnt_pt =' + str(cnt_pt))
+                # print('corner_pts['+str(i)+'] = ' + str(corner_pts[i]))
+                # print('dist = ' + str(dist))
+                # print('distSq[i] = ' + str(distSq[i]))
+                # print('took new cnt_pt which is closer '+ str(dist) + ' than the previous ' +str(distSq[i]))
+                # print('____________________________________________________')
     # draw minAreaRect closest rectangle
     color = 150
     int_box = np.int0(corner_pts)
@@ -329,7 +407,7 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt):
 def findSquare(im):
 
     _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+    corner_pts = []
     for q in np.arange(len(contours)):
         cnt = contours[q]
         # moments
@@ -366,6 +444,9 @@ def findSquare(im):
         # corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
         corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt)
         # corner_pts = findFarthestFromCenter(im,mc,box,cnt)
+    if corner_pts == []:
+        # return np.array( [[[0]*2]*4] )
+        return np.array( [[0]*2,[1]*2,[2]*2,[42]*2] )
     return corner_pts
 
 def matDot(A,B):
@@ -373,22 +454,8 @@ def matDot(A,B):
     np.dot(A,B,C)
     return C
 
-def getTagCorners(bSize, innerSize):
-    aS = bSize
-    aB = bSize + innerSize
-    src_pts = []
-    pts = [[aS, aS], [aS, aB], [aB, aB], [aB, aS]]
-    [src_pts.append(pt) for pt in pts]
-    return np.float32(src_pts)
 
-def drawTagWarpedToScene(mWarp, imTag, imScene):
-    h,w = imTag.shape
-    pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
-    dst = cv2.perspectiveTransform(pts, mWarp)
-
-    return cv2.polylines(imScene,[np.int32(dst)],True, 128,3, cv2.LINE_8)
-
-def addWarpRotation():
+def addWarpRotation(imScene,imTag):
 
     # find affine rotation
     angle = np.deg2rad(90)
@@ -440,69 +507,74 @@ def addWarpRotation():
 
     return mFinal
 
+def drawTagWarpedToScene(mWarp, imTag, imScene):
+    h,w = imTag.shape
+    pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+    dst = cv2.perspectiveTransform(pts, mWarp)
+    return cv2.polylines(imScene,[np.int32(dst)],True, 128,3, cv2.LINE_8)
+
 def drawSceneWarpedToTag(mWarp, imScene, dims):
     return cv2.warpPerspective(imScene, mWarp, dims) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
 
+
+def findWarpMatrix(imScene, cTag):
+
+    src_pts = cTag.ptsDetectArea
+
+    dst_pts = findSquare(imScene)
+    mWarp, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+    # matchesMask = mask.ravel().tolist()
+    # what is mask ?!
+
+
+    return dst_pts, mWarp
+
+
 if __name__ == '__main__':
-    imTag = readIm('invnoborder', '2L')
 
-    # symbol square - most inner = A
-    # symbol square frame 1 - 2nd most inner = B
-    side = 250
-    bSize = 40 # from corner to corner of the inner square
-    innerSize = side - 2 * bSize # inner square side
-    bInnerSize = 60 # border from corner of the inner to the corner of the symbol (60 for tag2)
-    #sizAwidth = sizBwidth
-    #sizAleft =  sizBleft
+    strTag = '2L'
+    # [imTag, ptTag] = readImTag('invnoborder', '2L')
+    # imTag
+    cTag = readTag(strTag)
 
-    imScene = readIm('space3', '2L')
+    imScene = readIm('space1', strTag)
     imSceneOrig = imScene.copy()
 
     # im1 = rotate(im1,180)
-    imTag = rotate(imTag,90)
+    # imTag = rotate(imTag,90)
 
-
-    src_pts = getTagCorners(bSize,innerSize)
-    print(src_pts)
-    imTag = drawDots(imTag,src_pts)
-
-    dst_pts = findSquare(imScene)
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    dst_pts, mWarp = findWarpMatrix(imScene,cTag)
+    print(cTag.ptsDetectArea)
     print(dst_pts)
     imScene = drawDots(imScene,dst_pts)
-    #findWarpMatrix
-    if 1: # find homeograhpy matrix
 
-
-        mWarp, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-        matchesMask = mask.ravel().tolist()
-        # what is mask ?!
-
-        im3 = drawTagWarpedToScene(mWarp, imTag, imScene)
-
-
-    print(str(mWarp) + " = Homeography transformation matrix")
+    print(str(mWarp) + " = Homography transformation matrix")
 
     # get inverse transformation matrix
     mInverse = np.linalg.inv(mWarp)
 
-    imTagFromScene = imTag.copy()
-    imTagFromScene = drawSceneWarpedToTag(mInverse, imSceneOrig, imTag.shape)
+    imTag = drawDots(cTag.imTagDetect.copy(), cTag.ptsDetectArea)
+    im3 = drawTagWarpedToScene(mWarp, imTag, imScene)
+
+
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    mFinal = addWarpRotation(imScene,cTag.imTagDetect)
+
+    imTagFromScene = cTag.imTagDetect.copy()
+    imTagFromScene = drawSceneWarpedToTag(mInverse, imSceneOrig, cTag.imTagDetect.shape)
 
     im = imTagFromScene
 #    im = cv2.adaptiveThreshold(im, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
-    bInnerSize
-    cv2.imshow('im ', im)
 
 
-    mFinal = addWarpRotation()
+    imTagFromSceneRotated = imTagFromScene.copy()
 
-    imTagFromSceneRotated = imTag.copy()
-
-    imTagFromSceneRotated = drawSceneWarpedToTag(mFinal, imSceneOrig, imTag.shape)
+    imTagFromSceneRotated = drawSceneWarpedToTag(mFinal, imSceneOrig, imTagFromScene.shape)
     # cv2.warpPerspective(imSceneOrig, mFinal, imTagFromScene.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
     # cv2.imshow('aa',im1copy)
 
-    imBoth = joinIm(imTagFromSceneRotated,joinIm(imTagFromScene,joinIm(imTag,imScene)))
+    imBoth = joinIm(im3,joinIm(imTagFromScene,joinIm(imTag,imScene)))
     # im3 =  cv2.cvtColor(im3 , cv2.COLOR_GRAY2RGB)
     # imAll = np.hstack([imBoth,im3])
     imAll = colorify(imBoth)

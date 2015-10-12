@@ -17,6 +17,7 @@ import time
 import Tkinter as tk
 from thisCV import *
 
+import findHomeography as fh
 
 # import sys
 
@@ -78,8 +79,14 @@ def image_capture(queue, queTag):
     maxLenQueue = 5
     cap = cv2.VideoCapture(0)
     loopingCV = 1
+    cTag = fh.readTag('2L')
     while loopingCV:
-        imWhole, imTags = stepCV(cap)
+
+        flag, frame = cap.read()
+        if flag == 0:
+            # return None
+            continue
+        imWhole, imTags = stepCV(frame,cTag)
         if queue.qsize() < maxLenQueue:
             queue.put(imWhole)
         queTag.put(imTags)
