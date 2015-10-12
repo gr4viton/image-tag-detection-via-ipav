@@ -19,7 +19,7 @@ def imclearborder(imgBW, radius):
     # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_L1)
 
     # contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
-    _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
     # hierarchy = Next, Previous, First_Child, Parent
     # Get dimensions of image
     imgRows = imgBW.shape[0]
@@ -68,12 +68,12 @@ def imclearborder(imgBW, radius):
     # mask2 = mask.copy()
     # cv2.dilate(mask,mask2)
 
-    # print mask.dtype
-    # print imgBW.dtype
+    # print(mask.dtype)
+    # print(imgBW.dtype)
     cv2.bitwise_and(mask, imgBW, imgBWcopy)
     imgBWcopy = imgBWcopy * 255
 
-    # print imgBWcopy.dtype
+    # print(imgBWcopy.dtype)
     # cv2.imshow('ss',imgBWcopy)
     # waitKeyExit()
 
@@ -105,7 +105,7 @@ def findTags(imIn):
     # Given a black and white image, first find all of its contours
     im = imIn.copy()
     # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
-    _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
     # contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
     imTags = [];
 
@@ -225,7 +225,21 @@ def threshIT(im, type):
         ret, otsu = cv2.threshold(im, 0, 255, cv2.THRESH_OTSU)
         return otsu
 
+def gaussIt(im,a):
+    return cv2.GaussianBlur(im, (a, a), 0)
 
+def floodIt(im,newVal):
+
+    h, w = im.shape[:2]
+    # mask = np.zeros((h + 2, w + 2), np.uint8)
+    a = 2
+    mask = np.zeros((h + a, w + a), np.uint8)
+    mask[:] = 0
+    # seed = None
+    seed = (0,0)
+    rect = 4
+    # rect = 8
+    cv2.floodFill(im, mask, seed, newVal, 0, 255, rect)
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 def stepCV(cap):
     flag, frame = cap.read()
@@ -245,8 +259,7 @@ def stepCV(cap):
     im = cl1
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ## gaussian blur
-    a = 5
-    blur = cv2.GaussianBlur(im, (a, a), 0)
+    blur = gaussIt(im,5)
     im = blur
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ##
@@ -259,7 +272,7 @@ def stepCV(cap):
     # imclearborder
     # maks out all contours which are touching the border
     killerBorder = 5
-    killedBorder = imclearborder(im, killerBorder)
+    killedBorder= imclearborder(im, killerBorder)
     a = 5
     killedBorder = cv2.copyMakeBorder(killedBorder[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
     # cv2.findContours(otsu
@@ -276,28 +289,9 @@ def stepCV(cap):
     # imfill
     # flood
     flooded = im.copy()
-
-    h, w = im.shape[:2]
-    # mask = np.zeros((h + 2, w + 2), np.uint8)
-    # a = 2
-    a = 2
-    mask = np.zeros((h + a, w + a), np.uint8)
-    # mask = np.ones((h + a, w + a), np.uint8)
-    mask[:] = 0
-    # seed = None
-    seed = (0,0)
-
-    # cv2.imshow('ss',mask*255)
-    # waitKeyExit()
-    newVal = 0
-    rect = 4
-    # rect = 8
-    cv2.floodFill(flooded, mask, seed, newVal, 0, 255, rect)
-    mask = np.zeros((h + a, w + a), np.uint8)
-    newVal = 255
-    cv2.floodFill(flooded, mask, seed, newVal, 0, 255, rect)
+    floodIt(flooded, 255)
+    floodIt(flooded, 0)
     im = flooded
-
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # findTags and put them into imTags list
     paired, imTags = findTags(im)
@@ -307,26 +301,10 @@ def stepCV(cap):
     vis = []
     for imTag in imTags:
         a = 50
-        # make a edge image
-        # edgeTag =  np.uint8(np.absolute( cv2.Sobel(imTag, cv2.CV_64F, 1, 0, ksize=5) ))
-        # Laplacian
-        edgeTag = np.uint8(np.absolute(cv2.Laplacian(imTag, cv2.CV_64F)))
-        edgeTag = imTag
 
         # make border for better drawing
-        im = cv2.copyMakeBorder(edgeTag, a, a, a, a, cv2.BORDER_CONSTANT, value=0)
+        im = cv2.copyMakeBorder(imTag, a, a, a, a, cv2.BORDER_CONSTANT, value=0)
         vis.append(im)
-        #
-        # tracker = getTracker()
-        # tracked = tracker.track(edgeTag)
-        # color = 65
-        # for tr in tracked:
-        #     cv2.polylines(vis, [np.int32(tr.quad)], True, color, 2)
-        #     for (x, y) in np.int32(tr.p1):
-        #         cv2.circle(vis, (x, y), 2, color)
-        #     draw_overlay(vis, tr)
-        #     print("drawn Contours")
-            # H, status = cv2.findHomography(p0, p1, cv2., 3.0) # cv2.RANSAC not needed
 
     imTags = vis
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -369,11 +347,6 @@ def loopCV(cap):
     while (True):
         im = stepCV(cap)
         cv2.imshow('image', im)
-        # if __name__ == '__main__':
-        #     cv2.imshow('image', im )
-        # else:
-        #     print("returning im")
-        #     return im
 
         # End loop
         k = cv2.waitKey(30) & 0xff
@@ -396,10 +369,6 @@ def waitKeyExit():
 #### Main program
 
 # http://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_thresholding/py_thresholding.html#thresholding
-
-        # http://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_thresholding/py_thresholding.html#thresholding
-
-        # C:\PROG\dev\opencv\opencv\sources\data\haarcascades\
 
 
 if __name__ == '__main__':
