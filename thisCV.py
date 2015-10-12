@@ -255,17 +255,17 @@ def stepCV(cap):
     im = thresh
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # inversion
-    # im = inverte(im.copy())
+    im = inverte(im.copy())
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # imclearborder
     # maks out all contours which are touching the border
     killerBorder = 5
-    clear = imclearborder(im, killerBorder)
+    killedBorder = imclearborder(im, killerBorder)
     a = 5
-    clear = cv2.copyMakeBorder(clear[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
+    killedBorder = cv2.copyMakeBorder(killedBorder[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
     # cv2.findContours(otsu
 
-    im = clear
+    im = killedBorder
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # bwareaopen
     # delete too small groups of pixels - with contours - slow
@@ -290,12 +290,12 @@ def stepCV(cap):
 
     # cv2.imshow('ss',mask*255)
     # waitKeyExit()
-    newVal = 255
+    newVal = 0
     rect = 4
     # rect = 8
     cv2.floodFill(flooded, mask, seed, newVal, 0, 255, rect)
     mask = np.zeros((h + a, w + a), np.uint8)
-    newVal = 0
+    newVal = 255
     cv2.floodFill(flooded, mask, seed, newVal, 0, 255, rect)
     im = flooded
 
@@ -339,7 +339,7 @@ def stepCV(cap):
     # ims = [gray, cl1, blur, thresh, clear, flooded]
     # ims = [gray, cl1, thresh, opened, paired]
     # ims = [gray, cl1, thresh,clear,  flooded, paired]
-    ims = [cl1, thresh,clear,  flooded, paired]
+    ims = [cl1, thresh,killedBorder,  flooded, paired]
     imWhole = np.vstack(ims)
 
     # if len(imTags) > 0:
