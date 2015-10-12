@@ -182,7 +182,7 @@ def inverte(im):
 def threshIT(im, type):
     ## THRESH
     if type == cv2.THRESH_BINARY_INV or type == 1:
-        ret, th1 = cv2.threshold(im, 127, 255, cv2.THRESH_BINARY_INV)
+        _, th1 = cv2.threshold(im, 127, 255, cv2.THRESH_BINARY_INV)
         return th1
     elif type == cv2.ADAPTIVE_THRESH_MEAN_C or type == 2:
         th2 = cv2.adaptiveThreshold(im, 255, cv2.ADAPTIVE_THRESH_MEAN_C, \

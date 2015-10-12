@@ -373,59 +373,22 @@ def matDot(A,B):
     np.dot(A,B,C)
     return C
 
-if __name__ == '__main__':
-    bgColor = 0 # black
-    # bgColor = 255 # white
+def getTagCorners(bSize, innerSize):
+    aS = bSize
+    aB = bSize + innerSize
+    src_pts = []
+    pts = [[aS, aS], [aS, aB], [aB, aB], [aB, aS]]
+    [src_pts.append(pt) for pt in pts]
+    return np.float32(src_pts)
 
-    # [im1, bSize] = makeBorder(readIm('invnoborder', '2L'), bgColor)
-    im1 = readIm('invnoborder', '2L')
+def drawTagWarpedToScene(mWarp, imTag, imScene):
+    h,w = imTag.shape
+    pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+    dst = cv2.perspectiveTransform(pts, mWarp)
 
+    return cv2.polylines(imScene,[np.int32(dst)],True, 128,3, cv2.LINE_8)
 
-    bSize = 40
-    innerSize = 170
-    im2 = readIm('space', '2L')
-    im2orig = im2.copy()
-
-    # im1 = rotate(im1,180)
-    im1 = rotate(im1,90)
-
-    if 1: # find homeograhpy matrix
-        aS = bSize
-        aB = bSize + innerSize
-        src_pts = []
-        pts = [[aS, aS], [aS, aB], [aB, aB], [aB, aS]]
-        [src_pts.append(pt) for pt in pts]
-        src_pts = np.float32(src_pts)
-        print(src_pts)
-        im1 = drawDots(im1,src_pts)
-
-        dst_pts = findSquare(im2)
-        print(dst_pts)
-        im2 = drawDots(im2,dst_pts)
-
-
-        mWarp, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
-        matchesMask = mask.ravel().tolist()
-
-        h,w = im1.shape
-        pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
-        dst = cv2.perspectiveTransform(pts, mWarp)
-
-        im3 = cv2.polylines(im2,[np.int32(dst)],True,128,3, cv2.LINE_8)
-
-
-    print(str(mWarp) + " = Homeography transformation matrix")
-
-    # apply homeography matrix
-    im1copy = im1.copy()
-    im1copy2 = im1.copy()
-    # print(im2.shape)
-    # print(im1copy.shape)
-    # cv2.warpPerspective(im2, im1copy, warpMatrix, im1copy.size(), cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
-    mInverse = np.linalg.inv(mWarp)
-    # np.inv(warpMatrix, inverseMatrix )
-    im1copy = cv2.warpPerspective(im2orig, mInverse, im1copy.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
-
+def addWarpRotation():
 
     # find affine rotation
     angle = np.deg2rad(90)
@@ -438,11 +401,11 @@ if __name__ == '__main__':
         [0,     0,      1] ])
     # rotMatrix = np.eye(3,3)
 
-    dx = -im1.shape[0] / 2
-    dy = -im1.shape[1] / 2
+    dx = -imTag.shape[0] / 2
+    dy = -imTag.shape[1] / 2
 
-    dx = -im2.shape[0] / 2
-    dy = -im2.shape[1] / 2
+    dx = -imScene.shape[0] / 2
+    dy = -imScene.shape[1] / 2
     # dx = 10
     # dy = 10
     mTra = np.array([
@@ -475,11 +438,71 @@ if __name__ == '__main__':
     # print("mFinal")
     # print(mFinal)
 
+    return mFinal
 
-    im1copy2 = cv2.warpPerspective(im2orig, mFinal, im1copy.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
+def drawSceneWarpedToTag(mWarp, imScene, dims):
+    return cv2.warpPerspective(imScene, mWarp, dims) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
+
+if __name__ == '__main__':
+    imTag = readIm('invnoborder', '2L')
+
+    # symbol square - most inner = A
+    # symbol square frame 1 - 2nd most inner = B
+    side = 250
+    bSize = 40 # from corner to corner of the inner square
+    innerSize = side - 2 * bSize # inner square side
+    bInnerSize = 60 # border from corner of the inner to the corner of the symbol (60 for tag2)
+    #sizAwidth = sizBwidth
+    #sizAleft =  sizBleft
+
+    imScene = readIm('space3', '2L')
+    imSceneOrig = imScene.copy()
+
+    # im1 = rotate(im1,180)
+    imTag = rotate(imTag,90)
+
+
+    src_pts = getTagCorners(bSize,innerSize)
+    print(src_pts)
+    imTag = drawDots(imTag,src_pts)
+
+    dst_pts = findSquare(imScene)
+    print(dst_pts)
+    imScene = drawDots(imScene,dst_pts)
+    #findWarpMatrix
+    if 1: # find homeograhpy matrix
+
+
+        mWarp, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+        matchesMask = mask.ravel().tolist()
+        # what is mask ?!
+
+        im3 = drawTagWarpedToScene(mWarp, imTag, imScene)
+
+
+    print(str(mWarp) + " = Homeography transformation matrix")
+
+    # get inverse transformation matrix
+    mInverse = np.linalg.inv(mWarp)
+
+    imTagFromScene = imTag.copy()
+    imTagFromScene = drawSceneWarpedToTag(mInverse, imSceneOrig, imTag.shape)
+
+    im = imTagFromScene
+#    im = cv2.adaptiveThreshold(im, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
+    bInnerSize
+    cv2.imshow('im ', im)
+
+
+    mFinal = addWarpRotation()
+
+    imTagFromSceneRotated = imTag.copy()
+
+    imTagFromSceneRotated = drawSceneWarpedToTag(mFinal, imSceneOrig, imTag.shape)
+    # cv2.warpPerspective(imSceneOrig, mFinal, imTagFromScene.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
     # cv2.imshow('aa',im1copy)
 
-    imBoth = joinIm(im1copy2,joinIm(im1copy,joinIm(im1,im2)))
+    imBoth = joinIm(imTagFromSceneRotated,joinIm(imTagFromScene,joinIm(imTag,imScene)))
     # im3 =  cv2.cvtColor(im3 , cv2.COLOR_GRAY2RGB)
     # imAll = np.hstack([imBoth,im3])
     imAll = colorify(imBoth)
@@ -495,7 +518,7 @@ if __name__ == '__main__':
     a = 0
     while 1:
         a = a + 1
-        if a > 200:
+        if a > 2000:
             break
         k = cv2.waitKey(30) & 0xff
         if k == ord('q'):
