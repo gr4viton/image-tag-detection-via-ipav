@@ -13,8 +13,8 @@ import cv2
 # import cv2.cv as cv
 from PIL import Image, ImageTk
 import time
-import tkinter as tk
-
+# import tkinter as tk
+import Tkinter as tk
 from thisCV import *
 
 

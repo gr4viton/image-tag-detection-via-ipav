@@ -518,7 +518,7 @@ if __name__ == '__main__':
     a = 0
     while 1:
         a = a + 1
-        if a > 2000:
+        if a > 200:
             break
         k = cv2.waitKey(30) & 0xff
         if k == ord('q'):

@@ -19,7 +19,7 @@ def imclearborder(imgBW, radius):
     # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_L1)
 
     # contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
-
+    _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     # hierarchy = Next, Previous, First_Child, Parent
     # Get dimensions of image
     imgRows = imgBW.shape[0]
@@ -251,11 +251,10 @@ def stepCV(cap):
     ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     ##
     thresh = threshIT(im, 'otsu')
-
     im = thresh
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # inversion
-    im = inverte(im.copy())
+    # im = inverte(im.copy())
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # imclearborder
     # maks out all contours which are touching the border
@@ -397,6 +396,10 @@ def waitKeyExit():
 #### Main program
 
 # http://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_thresholding/py_thresholding.html#thresholding
+
+        # http://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_thresholding/py_thresholding.html#thresholding
+
+        # C:\PROG\dev\opencv\opencv\sources\data\haarcascades\
 
 
 if __name__ == '__main__':
