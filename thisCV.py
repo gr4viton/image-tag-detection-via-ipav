@@ -7,10 +7,12 @@ import findHomeography as fh
 
 from collections import Counter
 
-
-global tracker, ar_verts, ar_edges
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#### imclearborder definition
+# global variables
+global tracker, ar_verts, ar_edges
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# function definitions
 
 def imclearborder(imgBW, radius):
     # Given a black and white image, first find all of its contours
@@ -63,10 +65,6 @@ def imclearborder(imgBW, radius):
     cv2.bitwise_and(mask, imgBW, imgBWcopy)
     imgBWcopy = imgBWcopy * 255
     return imgBWcopy
-
-
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#### makepairs(im)
 
 def draw_overlay(vis, tracked):
     x0, y0, x1, y1 = tracked.target.rect
@@ -157,9 +155,6 @@ def findTags(imScene, cTagModel):
 
     return imSceneWithDots, imTags
 
-
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#### bwareaopen definition
 def bwareaopen(imgBW, areaPixels,col = 0):
     # Given a black and white image, first find all of its contours
     imgBWcopy = imgBW.copy()
@@ -172,18 +167,9 @@ def bwareaopen(imgBW, areaPixels,col = 0):
             cv2.drawContours(imgBWcopy, contours, idx, col, -1)
     return imgBWcopy
 
-
-def update(i):
-    tbValue = i
-    print(i)
-
-
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 def inverte(im):
     return (255 - im)
 
-
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 def threshIT(im, type):
     ## THRESH
     if type == cv2.THRESH_BINARY_INV or type == 1:
@@ -233,6 +219,10 @@ def threshIT(im, type):
 def gaussIt(im,a):
     return cv2.GaussianBlur(im, (a, a), 0)
 
+def blurIt(im,a):
+#     a = 75
+    return cv2.bilateralFilter(im,9,a,a)
+
 def floodIt(im,newVal):
     h, w = im.shape[:2]
     # mask = np.zeros((h + 2, w + 2), np.uint8)
@@ -244,26 +234,28 @@ def floodIt(im,newVal):
     rect = 4
     # rect = 8
     cv2.floodFill(im, mask, seed, newVal, 0, 255, rect)
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 def stepCV(frame, cTag):
     a = 0.5
     im = cv2.resize(frame, (0, 0), fx=a, fy=a)
     # im = frame
 
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # RGB -> gray
     gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
     im = gray
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    # adaptive image histogram equalization
-    # create a CLAHE object (Arguments are optional).
+    # adaptive image histogram equalization - create a CLAHE object (Arguments are optional).
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     cl1 = clahe.apply(im)
     im = cl1
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ## gaussian blur
-    blur = gaussIt(im,7)
+    # gaussian blur
+    # blur = gaussIt(im,7)
+    blur = blurIt(im,75)
     im = blur
-    ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    ##
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # Threshing - to get binary image out of gray one
     im = inverte(im.copy())
     thresh = threshIT(im, 'otsu')
     im = thresh
@@ -272,46 +264,31 @@ def stepCV(frame, cTag):
     # inversion
     # im = inverte(im.copy())
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    # imclearborder
-    # maks out all contours which are touching the border
+    # imclearborder - maskes out all contours which are touching the border
     killerBorder = 5
     killedBorder= imclearborder(im, killerBorder)
     a = 1
     killedBorder = cv2.copyMakeBorder(killedBorder[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
 
     im = killedBorder
-    ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # bwareaopen
     # delete too small groups of pixels - with contours - slow
     # col = 64
     # opened = bwareaopen(im, 5*5, col)
     # im = opened
 
-    ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # imfill
     # flood
     flooded = im.copy()
     floodIt(flooded, 255)
     floodIt(flooded, 0)
     im = flooded
-    ##%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # findTags and put them into imTags list
-
     paired, imTags = findTags(im, cTag)
 
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    # track individual tags orientation
-    # vis = []
-    # for imTag in imTags:
-    #     a = 50
-    #
-    #     # make border for better drawing
-    #     im = cv2.copyMakeBorder(imTag, a, a, a, a, cv2.BORDER_CONSTANT, value=0)
-    #     vis.append(im)
-    #
-    # imTags = vis
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    # show of
 
     ims = []
     # ims.append( [gray] )
@@ -323,30 +300,27 @@ def stepCV(frame, cTag):
     ims.append( [paired] )
 
     imWhole = fh.joinIm(ims, 1)
-    # imWhole = np.vstack(ims)
 
-    # if len(imTags) > 0:
-    #     imTags = imTags[0]
-    #    cv2.imshow('imColor', frame)
+    font = cv2.FONT_HERSHEY_COMPLEX_SMALL
+    col = 255
+    text = 'FPS = ?'
+    hw = (1,20)
+    cv2.putText(imWhole, text, hw , font, 1, 0, 5) # , cv2.LINE_AA )
+    cv2.putText(imWhole, text, hw, font, 1, col)
     return imWhole, imTags
 
-
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 def loopCV(cap):
     print("loopCV started")
     while (True):
         im = stepCV(cap)
         cv2.imshow('image', im)
-
-        # End loop
+        # How to end the loop
         k = cv2.waitKey(30) & 0xff
         if k == ord('q'):
             break
         if k == 27:
             break
-
-        # When everything done, release the capture
-        cv2.destroyAllWindows()
+        cv2.destroyAllWindows() # When everything done, release the capture
 
 def waitKeyExit():
     while True:
@@ -355,11 +329,6 @@ def waitKeyExit():
             break
         if k == 27:
             break
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#### Main program
-
-# http://docs.opencv.org/3.0-beta/doc/py_tutorials/py_imgproc/py_thresholding/py_thresholding.html#thresholding
-
 
 if __name__ == '__main__':
     cap = cv2.VideoCapture(0)
