@@ -188,8 +188,32 @@ class C_area:
 #     def getTopLeftCentered(self,hwUpper):
 #         return self.
 
+class C_observedTag:
+    # static class variable - known Tag
+    # tagModels = loadTagModels('2L')
+    def __init__(self, imTagInScene):
+        self.imScene = imTagInScene
+    # functions:
 
-class C_tag:
+        # dst_pts, mWarp = fh.findWarpMatrix(imTagInScene, cTagModel)
+    # find Warp etc
+    # find square corners
+    # etc..
+
+
+def findWarpMatrix(imScene, cTag):
+
+    src_pts = cTag.ptsDetectArea
+
+    dst_pts = findSquare(imScene)
+    mWarp, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+    # matchesMask = mask.ravel().tolist()
+    # what is mask ?!
+    # mWarp = addWarpRotation(mWarp, cTag, imScene)
+
+    return dst_pts, mWarp
+
+class C_tag: # tag model
     def __init__(self, strTag):
         # later have function to get this from actual image
 
@@ -534,18 +558,6 @@ def drawTagWarpedToScene(mWarp, imTag, imScene):
 def drawSceneWarpedToTag(mWarp, imScene, dims):
     return cv2.warpPerspective(imScene, mWarp, dims) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
 
-
-def findWarpMatrix(imScene, cTag):
-
-    src_pts = cTag.ptsDetectArea
-
-    dst_pts = findSquare(imScene)
-    mWarp, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-    # matchesMask = mask.ravel().tolist()
-    # what is mask ?!
-    # mWarp = addWarpRotation(mWarp, cTag, imScene)
-
-    return dst_pts, mWarp
 
 
 if __name__ == '__main__':

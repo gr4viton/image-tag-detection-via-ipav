@@ -86,14 +86,14 @@ def draw_overlay(vis, tracked):
     return vis
 
 
-def findTags(imScene, cTag):
+def findTags(imScene, cTagModel):
     # Given a black and white image, first find all of its contours
     # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
     _, contours, hierarchy = cv2.findContours(imScene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
     # contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
     imTags = [];
 
-
+    cSeenTags = []
     imSceneWithDots = imScene.copy()
     # find bounding boxes etc
     for q in np.arange(len(contours)):
@@ -124,14 +124,6 @@ def findTags(imScene, cTag):
         cv2.bitwise_and(mask, imScene.copy(), imTagInScene)
         imTagInScene = imTagInScene * 255
 
-
-        # rotated boundingbox
-        # color = 122
-        # rect = cv2.minAreaRect(cnt)
-        # box = cv2.boxPoints(rect)
-        # box = np.int0(box)
-        # im = cv2.drawContours(im,[box],0,color,2)
-
         # # find out euler number
         # _, tagCnt, hie = cv2.findContours(imTagInScene.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         # if hie is None: continue
@@ -145,15 +137,23 @@ def findTags(imScene, cTag):
         #     imTags.append(imTagInScene)
         #     # imTags = imIn[y:y+h,x:x+w]
 
-        dst_pts, mWarp = fh.findWarpMatrix(imTagInScene, cTag)
+        # if it sustains tha check of some kind
+        if 1:
+            cSeenTag = fh.C_observedTag(imTagInScene)
+            # cSeenTag.findWarpMatrix()
+            # mWarp = cSeenTag.mWarp
+            #
+            dst_pts, mWarp = fh.findWarpMatrix(imTagInScene, cTagModel)
 
-        # get inverse transformation matrix
-        try:
-            mInverse = np.linalg.inv(mWarp)
-            imTagRecreated = fh.drawSceneWarpedToTag(mInverse, imTagInScene, cTag.imTagDetect.shape)
-            imTags.append(imTagRecreated )
-        except:
-            print "Probably bad tag detected"
+            # get inverse transformation matrix
+            try:
+                mInverse = np.linalg.inv(mWarp)
+                imTagRecreated = fh.drawSceneWarpedToTag(mInverse, imTagInScene, cTagModel.imTagDetect.shape)
+                imTags.append(imTagRecreated )
+            except:
+                print "Probably bad tag detected"
+                continue
+            cSeenTags.append(cSeenTag)
 
     return imSceneWithDots, imTags
 
@@ -234,7 +234,6 @@ def gaussIt(im,a):
     return cv2.GaussianBlur(im, (a, a), 0)
 
 def floodIt(im,newVal):
-
     h, w = im.shape[:2]
     # mask = np.zeros((h + 2, w + 2), np.uint8)
     a = 2
@@ -330,22 +329,6 @@ def stepCV(frame, cTag):
     #     imTags = imTags[0]
     #    cv2.imshow('imColor', frame)
     return imWhole, imTags
-
-
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-# def findRotation(imTags):
-#     # print(len(imTags))
-#     # if len(imTags) == 0:
-#     #     return
-#     im = imTags
-#     # for im in imTags:
-#     tracked = tracker.track(im)
-#     # tracked = []
-#     for tr in tracked:
-#         cv2.polylines(im, [np.int32(tr.quad)], True, (255, 255, 255), 2)
-#         for (x, y) in np.int32(tr.p1):
-#             cv2.circle(im, (x, y), 2, (255, 255, 255))
-#         im = draw_overlay(im, tr)
 
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
