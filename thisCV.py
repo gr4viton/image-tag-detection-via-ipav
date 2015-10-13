@@ -104,9 +104,10 @@ def findTags(imScene, cTagModel):
         # if it sustains tha check of some kind
         if 1:
             cSeenTag = fh.C_observedTag(imTagInScene)
-            success = cSeenTag.addExternalContour(cnt)
-            success += cSeenTag.findWarpMatrix(cTagModel)
-            if success != 0:
+
+            if cSeenTag.addExternalContour(cnt) != 0:
+                continue
+            if cSeenTag.findWarpMatrix(cTagModel) != 0:
                 continue
 
             imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)

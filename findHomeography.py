@@ -18,15 +18,16 @@ class C_observedTag:
 
         # else:
 
-    def addExternalContour(self,cntExternal): # returns 0 on success
-        self.cntExternal = cntExternal
-        # calculate moments
-        self.mu = cv2.moments(cntExternal)
+    def calcMoments(self):  # returns 0 on success
+        self.mu = cv2.moments(self.cntExternal)
         if self.mu['m00'] == 0:
             return 1
-        self.mc = getCentralMoment(self.mu)
+        self.mc = np.float32(getCentralMoment(self.mu))
         return 0
 
+    def addExternalContour(self,cntExternal): # returns 0 on success
+        self.cntExternal = cntExternal
+        return self.calcMoments()
 
     def findWarpMatrix(self, cTag): # returns 0 on succesfull matching
         src_pts = cTag.ptsDetectArea
@@ -43,7 +44,7 @@ class C_observedTag:
             self.mInverse = np.linalg.inv(self.mWarp)
         except:
             # raise Exception('Cannot calculate inverse matrix.')
-            print "Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!"
+            print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
             return 1
 
         # find out if it is really a tag
@@ -53,31 +54,30 @@ class C_observedTag:
         # mWarp = addWarpRotation(mWarp, cTagModel, imScene)
         return 0
 
+    def countExternalContour(self): # returns 0 on success
+        _, contours, hierarchy = cv2.findContours(self.imScene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        self.cntExternal = contours[0]
+        return self.calcMoments()
+
     def findSquare(self):  # returns 0 on succesfull findings
-        # _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnt = self.cntExternal
+        if self.cntExternal is None:
+            # print("Should I count the cntExternal now?")
+            if self.countExternalContour() != 0:
+                return 1
+
         im = self.imScene
-        if cnt is None:
-            print("Should I count the cntExternal now?")
-            return 1
-
-        corner_pts = []
-
-        # moments
-        mu = cv2.moments(cnt)
-        try:
-            mc = getCentralMoment(mu)
-        except:
-            return 1
+        cnt = self.cntExternal
 
         # rotated boundingbox
         rect = cv2.minAreaRect(cnt)
         box = cv2.boxPoints(rect)
-        # drawRotatedBoundingBox(im,cnt,50)
+
+        print rect
+        print box
 
         # corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
-        corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im, mc, box, cnt)
         # corner_pts = findFarthestFromCenter(im,mc,box,cnt)
+        corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im,self.mc,box,cnt)
 
         if corner_pts == []:
             return 1
@@ -93,9 +93,10 @@ class C_observedTag:
         return cv2.polylines(imScene,[np.int32(dst)],True, 128,3, cv2.LINE_8)
 
     def drawSceneWarpedToTag(self, cTagModel):
+        # print self.mInverse
         return cv2.warpPerspective(self.imScene.copy(), self.mInverse, cTagModel.imTagDetect.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
 
-    def addWarpRotation(imScene,imTag):
+    def addWarpRotation(self,imScene,imTag):
 
         # findTagRotation()
         # find affine rotation
@@ -124,7 +125,7 @@ class C_observedTag:
         mTraInv = np.linalg.inv(mTra)
 
 
-        mFinal = mInverse.copy()
+        mFinal = self.mInverse.copy()
         # mFinal = np.eye(3,3)
 
         # np.dot(mFinal, mTra, mFinal )
@@ -380,7 +381,6 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt):
     for pt in cnt:
         cnt_pt = pt[0]
         for i in range(0,4):
-
             distFromMinBox = cv2.norm(cnt_pt, box[i], norm)
             distFromCenter = cv2.norm(cnt_pt, mc, norm)
             dist = distFromCenter - distFromMinBox
