@@ -155,12 +155,13 @@ def drawDots(im, dots, numbers=1):
 
         pt = [int(dot[0]),int(dot[1])]
         # col = (255, 0, 0)
-        col = 128
+        col = 180
         cv2.circle(im, tuple(pt), 4, col, 1)
         if numbers == 1:
             # font = cv2.FONT_HERSHEY_SIMPLEX
             font = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
-            cv2.putText(im,str(i), tuple([ d+10 for d in pt ]), font, 1.7, col, cv2.LINE_AA )
+            cv2.putText(im,str(i), tuple([ d+10 for d in pt ]), font, 1, 0, 3 )
+            cv2.putText(im,str(i), tuple([ d+10 for d in pt ]), font, 1, 255, 1 )
         i += 1
     return im
 
@@ -281,7 +282,25 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt):
     int_box = np.int0(corner_pts)
     cv2.drawContours(im,[int_box],0,color,1)
     return corner_pts
+def findExtremes(cnt):
+    extremes = []
+    extremes.extend([cnt[cnt[:,:,0].argmin()][0]] ) # leftmost
+    extremes.extend([cnt[cnt[:,:,1].argmin()][0]] ) # topmost
+    extremes.extend([cnt[cnt[:,:,0].argmax()][0]] ) # rightmost
+    extremes.extend([cnt[cnt[:,:,1].argmax()][0]] ) # bottommost
+    return extremes
 
+def drawBoundingBox(im,cnt, color = 255, lineWidth = 1):
+    # non-rotated boundingbox
+    x, y, w, h = cv2.boundingRect(cnt)
+    cv2.rectangle(im, (x, y), (x + w, y + h), color, lineWidth)
+
+def drawRotatedBoundingBox(im, cnt, color = 255, lineWidth = 1):
+    # draw rotated minAreaRect boundingBox
+    rect = cv2.minAreaRect(cnt)
+    box = cv2.boxPoints(rect)
+    int_box = np.int0(box)
+    cv2.drawContours(im,[int_box],0,color,1)
 def findSquare(im):
 
     _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -300,24 +319,11 @@ def findSquare(im):
         color = 200
         cv2.circle(im, mc, 4, color, -1, 8, 0)
 
-        # non-rotated boundingbox
-        # x, y, w, h = cv2.boundingRect(cnt)
-        # cv2.rectangle(im, (x, y), (x + w, y + h), color, 2)
 
         # rotated boundingbox
-
         rect = cv2.minAreaRect(cnt)
         box = cv2.boxPoints(rect)
-        # draw rotated minAreaRect boundingBox
-        # color = 150
-        # int_box = np.int0(box)
-        # cv2.drawContours(im,[int_box],0,color,1)
-
-        # leftmost etc
-        # dst_pts.extend([cnt[cnt[:,:,0].argmin()][0]] ) # leftmost
-        # dst_pts.extend([cnt[cnt[:,:,1].argmin()][0]] ) # topmost
-        # dst_pts.extend([cnt[cnt[:,:,0].argmax()][0]] ) # rightmost
-        # dst_pts.extend([cnt[cnt[:,:,1].argmax()][0]] ) # bottommost
+        # drawRotatedBoundingBox(im,cnt,150)
 
         # corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
         corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt)
@@ -400,15 +406,10 @@ def drawSceneWarpedToTag(mWarp, imScene, dims):
 if __name__ == '__main__':
 
     strTag = '2L'
-    # [imTag, ptTag] = readImTag('invnoborder', '2L')
-    # imTag
     cTag = readTag(strTag)
 
     imScene = readIm('space1', strTag)
     imSceneOrig = imScene.copy()
-
-    # im1 = rotate(im1,180)
-    # imTag = rotate(imTag,90)
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     dst_pts, mWarp = findWarpMatrix(imScene,cTag)
@@ -439,7 +440,6 @@ if __name__ == '__main__':
 
     imTagFromSceneRotated = drawSceneWarpedToTag(mFinal, imSceneOrig, imTagFromScene.shape)
     # cv2.warpPerspective(imSceneOrig, mFinal, imTagFromScene.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
-    # cv2.imshow('aa',im1copy)
 
 
     imBoth = joinIm([[imTagFromScene],[imTag],[imScene] ])

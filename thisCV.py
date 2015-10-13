@@ -3,13 +3,6 @@ import cv2
 import findHomeography as fh
 # from cv2 import xfeatures2d
 # import common
-# from plane_tracker import PlaneTracker
-
-from collections import Counter
-
-# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-# global variables
-global tracker, ar_verts, ar_edges
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # function definitions
@@ -85,14 +78,14 @@ def draw_overlay(vis, tracked):
 
 
 def findTags(imScene, cTagModel):
-    # Given a black and white image, first find all of its contours
+
     # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
     _, contours, hierarchy = cv2.findContours(imScene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
-    # contours = [cv2.approxPolyDP(cnt, 3, True) for cnt in contours0]
     imTags = [];
 
     cSeenTags = []
     imSceneWithDots = imScene.copy()
+
     # find bounding boxes etc
     for q in np.arange(len(contours)):
         cnt = contours[q]
