@@ -7,6 +7,7 @@ class C_observedTag:
 
     def __init__(self, imTagInScene):
         self.imScene = imTagInScene
+        self.imWarped = None
         self.dst_pts = None
         self.mWarp = None
         self.mInverse = None
@@ -25,12 +26,17 @@ class C_observedTag:
         self.mc = np.float32(getCentralMoment(self.mu))
         return 0
 
+    def calcExternalContour(self): # returns 0 on success
+        _, contours, hierarchy = cv2.findContours(self.imScene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        self.cntExternal = contours[0]
+        return self.calcMoments()
+
     def addExternalContour(self,cntExternal): # returns 0 on success
         self.cntExternal = cntExternal
         return self.calcMoments()
 
-    def findWarpMatrix(self, cTag): # returns 0 on succesfull matching
-        src_pts = cTag.ptsDetectArea
+    def findWarpMatrix(self, cTagModel): # returns 0 on succesfull matching
+        src_pts = cTagModel.ptsDetectArea
         if self.findSquare() != 0:
             # print('Could not find square in image')
             return 1
@@ -47,22 +53,53 @@ class C_observedTag:
             print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
             return 1
 
+        self.imWarped = self.drawSceneWarpedToTag(cTagModel)
+
         # find out if it is really a tag
+        d = cTagModel.detectArea
+        self.imWarped = self.drawSceneWarpedToTag(cTagModel)
+        # detectArea = cTagModel.symbolArea.getRoi( self.imWarped )
 
 
+        # print cTagModel.ptsSymbolArea
+        imSymbolArea = cTagModel.symbolArea.getRoi( self.imWarped )
+        # cv2.imshow('symbolArea',imSymbolArea )
+
+
+        aSubs = cTagModel.symbolSubAreas
+        # print aSubs
+
+        imSymbolSubAreas = []
+        for area in aSubs:
+            imSub = area.getRoi(self.imWarped)
+            imSymbolSubAreas.append(imSub)
+
+        squareSums = \
+            [ [ np.sum(imSub) / (imSub.shape[0]*imSub.shape[1]) ,
+               np.sum(imSubModel) / (imSubModel.shape[0]*imSubModel.shape[1]) ]
+            for imSub, imSubModel
+            in zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)]
+
+        # a = [1, 2, 3, 4]
+        # b = [5,6,7,8]
+        # print zip(a,b)
+        print squareSums
+        # print len(cTagModel.imSymbolSubAreas)
+        # print zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)
+        # waitKeyExit()
+
+        # thresholded element-wise addition
         # procentual histogram - of seenTag vs of tagModel
+
+
         # mWarp = addWarpRotation(mWarp, cTagModel, imScene)
         return 0
 
-    def countExternalContour(self): # returns 0 on success
-        _, contours, hierarchy = cv2.findContours(self.imScene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        self.cntExternal = contours[0]
-        return self.calcMoments()
 
     def findSquare(self):  # returns 0 on succesfull findings
         if self.cntExternal is None:
             # print("Should I count the cntExternal now?")
-            if self.countExternalContour() != 0:
+            if self.calcExternalContour() != 0:
                 return 1
 
         im = self.imScene
@@ -72,8 +109,8 @@ class C_observedTag:
         rect = cv2.minAreaRect(cnt)
         box = cv2.boxPoints(rect)
 
-        print rect
-        print box
+        # print rect
+        # print box
 
         # corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
         # corner_pts = findFarthestFromCenter(im,mc,box,cnt)
@@ -150,7 +187,6 @@ class C_observedTag:
         return mFinal
 
 
-
 class C_tag: # tag model
     def __init__(self, strTag):
         # later have function to get this from actual image
@@ -162,15 +198,24 @@ class C_tag: # tag model
 
             self.whole = C_area([hwWhole ]*2, [0]*2)
             b = bSymbolArea
-            self.symbolArea = C_area([hwWhole - b*2],[b]*2)
+            self.symbolArea = C_area([hwWhole - b*2]*2,[b]*2)
             b = bDetectArea
-            self.detectArea = C_area([hwWhole - b*2],[b]*2)
+            self.detectArea = C_area([hwWhole - b*2]*2,[b]*2)
 
             self.imTag = readIm('full', strTag)
             self.imTagDetect = readIm('invnoborder', strTag)
 
             self.ptsSymbolArea = getBoxCorners(self.symbolArea.tl[0], self.symbolArea.hw[0] )
             self.ptsDetectArea = getBoxCorners(self.detectArea.tl[0], self.detectArea.hw[0] )
+
+            num = 2
+            self.symbolSubAreas= self.symbolArea.getSubAreas(num, num)
+
+            self.imSymbolSubAreas = []
+            for area in self.symbolSubAreas:
+                imSub = area.getRoi(self.imTagDetect)
+                self.imSymbolSubAreas.append(imSub)
+
     #
     # def __init__(self, area):
     #     # later have function to get this from actual image
@@ -193,7 +238,49 @@ class C_area:
         self.hw = hw
         self.tl = tl
 
+    def getRoi(self,im):
+        return im[  self.tl[0] : self.tl[0] + self.hw[0],
+                    self.tl[1] : self.tl[1] + self.hw[1] ]
 
+    def getSubAreas(self, row, col):
+        # one cell dimensions
+        hSub = int(self.hw[0] / row)
+        wSub = int(self.hw[1] / col)
+
+        # border pixels vertical
+        hSubMulti = hSub * row
+        if hSubMulti < self.hw[0]:
+            # must append - > append to the last one
+            hDiff = self.hw[0] - hSubMulti
+        else:
+            hDiff = 0
+
+        # border pixels horizontal
+        wSubMulti = wSub * col
+        if wSubMulti < self.hw[1]:
+            # must append - > append to the last one
+            wDiff = self.hw[1] - wSubMulti
+        else:
+            wDiff = 0
+
+        # create the subareas
+        aSubs = []
+        hw = (hSub, wSub)
+        for iRow in range(0,row):
+            for iCol in range(0,col):
+                tl = (row*hSub, col*wSub)
+                aSub = C_area( hw, tl)
+                if iRow == row-1:
+                    if iCol == col-1:
+                        aSub = C_area( (hSub+hDiff,wSub+wDiff), tl)
+                    else:
+                        aSub = C_area( (hSub,wSub+wDiff), tl)
+                if iCol == col-1:
+                    aSub = C_area( (hSub,wSub+wDiff), tl)
+
+                aSubs.append(aSub)
+
+        return aSubs
     # def __init__(self, hw, tl, tlFromUpperHW = False):
     #     self.hw = hw
     #     if tlFromUpperHW == False:
@@ -208,7 +295,6 @@ class C_area:
 #
 #     def getTopLeftCentered(self,hwUpper):
 #         return self.
-
 
 
 
@@ -488,3 +574,12 @@ if __name__ == '__main__':
 
 
 
+
+
+def waitKeyExit():
+    while True:
+        k = cv2.waitKey(30) & 0xff
+        if k == ord('q'):
+            break
+        if k == 27:
+            break
