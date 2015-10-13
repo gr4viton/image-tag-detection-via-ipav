@@ -59,7 +59,10 @@ def update_image_tag(image_label, imTags):
     k = slTags.get()
     if k >= numTags :
         k = numTags  - 1
-    update_image(image_label, imTags[k])
+    # update_image(image_label, imTags[k])
+    # print len(imTags)
+    imAllTags = fh.joinIm( [[im] for im in imTags], 1 )
+    update_image(image_label, imAllTags)
 
 def update_all(root, params):
     imlTags, queTag, imlLabel, queue = params

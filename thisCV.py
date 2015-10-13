@@ -64,17 +64,6 @@ def imclearborder(imgBW, radius):
     imgBWcopy = imgBWcopy * 255
     return imgBWcopy
 
-def drawCentroid(im, cnt, color = 255):
-    mu = cv2.moments(cnt)
-    mc = getCentralMoment(mu)
-    cv2.circle(im, tuple(int(i) for i in mc), 4, color, -1, 8, 0)
-
-def getCentralMoment(mu):
-    if mu['m00'] == 0:
-        raise Exception('Moment of image m00 is zero. Could not count central moment!')
-    return [ mu['m10'] / mu['m00'],
-             mu['m01'] / mu['m00'] ]
-
 def findTags(imScene, cTagModel):
 
     # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
@@ -86,15 +75,9 @@ def findTags(imScene, cTagModel):
 
     # find bounding boxes etc
     for q in np.arange(len(contours)):
+
         cnt = contours[q]
 
-        # moments
-        mu = cv2.moments(cnt)
-        if mu['m00'] == 0: continue
-        mc = getCentralMoment(mu)
-
-        # DRAW centroid
-        drawCentroid(imSceneWithDots,cnt, 180)
 
         # slice out imTagInScene
         mask = np.uint8( np.zeros(imScene.shape) )
@@ -121,11 +104,14 @@ def findTags(imScene, cTagModel):
         # if it sustains tha check of some kind
         if 1:
             cSeenTag = fh.C_observedTag(imTagInScene)
-            success = cSeenTag.findWarpMatrix(cTagModel)
-            if not success:
+            success = cSeenTag.addExternalContour(cnt)
+            success += cSeenTag.findWarpMatrix(cTagModel)
+            if success != 0:
                 continue
 
             imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)
+            fh.drawCentroid(imSceneWithDots,cnt, 180) # DRAW centroid
+
             imTags.append(imTagRecreated )
             cSeenTags.append(cSeenTag)
 

@@ -10,10 +10,29 @@ class C_observedTag:
         self.dst_pts = None
         self.mWarp = None
         self.mInverse = None
+        self.cntExternal = None
+        self.mu = None
+        self.mc = None
+        # if cntExternal is not None:
+        #     cntExternal
 
-    def findWarpMatrix(self, cTag): # returns False on unsuccesfull matching
+        # else:
+
+    def addExternalContour(self,cntExternal): # returns 0 on success
+        self.cntExternal = cntExternal
+        # calculate moments
+        self.mu = cv2.moments(cntExternal)
+        if self.mu['m00'] == 0:
+            return 1
+        self.mc = getCentralMoment(self.mu)
+        return 0
+
+
+    def findWarpMatrix(self, cTag): # returns 0 on succesfull matching
         src_pts = cTag.ptsDetectArea
-        self.dst_pts = findSquare(self.imScene)
+        if self.findSquare() != 0:
+            # print('Could not find square in image')
+            return 1
         # self.mWarp, mask= cv2.findHomography(src_pts, self.dst_pts, cv2.RANSAC, 5.0)
         self.mWarp, _ = cv2.findHomography(src_pts, self.dst_pts, cv2.LMEDS)
         # matchesMask = mask.ravel().tolist()
@@ -25,10 +44,47 @@ class C_observedTag:
         except:
             # raise Exception('Cannot calculate inverse matrix.')
             print "Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!"
-            return False
+            return 1
 
-        # mWarp = addWarpRotation(mWarp, cTag, imScene)
-        return True
+        # find out if it is really a tag
+
+
+        # procentual histogram - of seenTag vs of tagModel
+        # mWarp = addWarpRotation(mWarp, cTagModel, imScene)
+        return 0
+
+    def findSquare(self):  # returns 0 on succesfull findings
+        # _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnt = self.cntExternal
+        im = self.imScene
+        if cnt is None:
+            print("Should I count the cntExternal now?")
+            return 1
+
+        corner_pts = []
+
+        # moments
+        mu = cv2.moments(cnt)
+        try:
+            mc = getCentralMoment(mu)
+        except:
+            return 1
+
+        # rotated boundingbox
+        rect = cv2.minAreaRect(cnt)
+        box = cv2.boxPoints(rect)
+        # drawRotatedBoundingBox(im,cnt,50)
+
+        # corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
+        corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im, mc, box, cnt)
+        # corner_pts = findFarthestFromCenter(im,mc,box,cnt)
+
+        if corner_pts == []:
+            return 1
+
+        self.dst_pts = corner_pts
+        return 0
+
 
     def drawTagWarpedToScene(self, imTag, imScene):
         h,w = imTag.shape
@@ -220,8 +276,6 @@ def colorify(im):
 def drawDots(im, dots, numbers=1):
     i = 0
     for dot in dots:
-        #print(dot)
-
         pt = [int(dot[0]),int(dot[1])]
         # col = (255, 0, 0)
         col = 180
@@ -317,18 +371,12 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt):
     mc = np.float32(mc)
     corner_pts = []
     [corner_pts.append(box[i]) for i in range(0,4)] # append 4 mc
-    #corner.append [mc, dist]
     corner_pts = np.float32(corner_pts)
-    # print(corner_pts)
-
 
     distSq = [0] *4 # distance = distFromCenter - distFromMinBox
     distSq = np.float32(distSq)
-    # print(distSq)
 
     cnt = np.float32(cnt)
-    # print('starting to count')
-
     for pt in cnt:
         cnt_pt = pt[0]
         for i in range(0,4):
@@ -347,10 +395,11 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt):
                 # print('took new cnt_pt which is closer '+ str(dist) + ' than the previous ' +str(distSq[i]))
                 # print('____________________________________________________')
     # draw minAreaRect closest rectangle
-    color = 150
-    int_box = np.int0(corner_pts)
-    cv2.drawContours(im,[int_box],0,color,1)
+    # color = 150
+    # int_box = np.int0(corner_pts)
+    # cv2.drawContours(im,[int_box],0,color,1)
     return corner_pts
+
 def findExtremes(cnt):
     extremes = []
     extremes.extend([cnt[cnt[:,:,0].argmin()][0]] ) # leftmost
@@ -371,36 +420,17 @@ def drawRotatedBoundingBox(im, cnt, color = 255, lineWidth = 1):
     int_box = np.int0(box)
     cv2.drawContours(im,[int_box],0,color,1)
 
-def findSquare(im):
-    _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    corner_pts = []
-    for q in np.arange(len(contours)):
-        cnt = contours[q]
-        # moments
-        mu = cv2.moments(cnt)
-        leftTop = tuple(cnt[0, 0])
-        if mu['m00'] == 0: continue
-        mc = (int(mu['m10'] / mu['m00']), int(mu['m01'] / mu['m00']))
-        # first pixel
-        color = 128
-        cv2.circle(im, leftTop, 4, color, -1, 8, 0)
-        # centroid
-        color = 200
-        cv2.circle(im, mc, 4, color, -1, 8, 0)
+def drawCentroid(im, cnt, color = 255):
+    mu = cv2.moments(cnt)
+    mc = getCentralMoment(mu)
+    cv2.circle(im, tuple(int(i) for i in mc), 4, color, -1, 8, 0)
 
+def getCentralMoment(mu):
+    if mu['m00'] == 0:
+        raise Exception('Moment of image m00 is zero. Could not count central moment!')
+    return [ mu['m10'] / mu['m00'],
+             mu['m01'] / mu['m00'] ]
 
-        # rotated boundingbox
-        rect = cv2.minAreaRect(cnt)
-        box = cv2.boxPoints(rect)
-        # drawRotatedBoundingBox(im,cnt,150)
-
-        # corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
-        corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt)
-        # corner_pts = findFarthestFromCenter(im,mc,box,cnt)
-    if corner_pts == []:
-        # return np.array( [[[0]*2]*4] )
-        return np.array( [[0]*2,[1]*2,[2]*2,[42]*2] )
-    return corner_pts
 
 def matDot(A,B):
     C = np.eye(3,3)
@@ -411,50 +441,37 @@ def matDot(A,B):
 if __name__ == '__main__':
 
     strTag = '2L'
-    cTag = readTag(strTag)
+    cTagModel = readTag(strTag)
 
     imScene = readIm('space1', strTag)
-    imSceneOrig = imScene.copy()
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    dst_pts, mWarp = findWarpMatrix(imScene,cTag)
-    print(cTag.ptsDetectArea)
-    print(dst_pts)
-    imScene = drawDots(imScene,dst_pts)
+    cSeenTag = C_observedTag(imScene.copy())
+    success = cSeenTag.findWarpMatrix(cTagModel)
+    if not success:
+        print 'Tag from scene could not be transformed!'
+        exit
+
+    imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)
+
+    mWarp = cSeenTag.mWarp
+
+    print(cTagModel.ptsDetectArea)
+    print(cSeenTag.dst_pts)
+    imScene = drawDots(imScene, cSeenTag.dst_pts)
+    # imScene = drawRotatedBoundingBox(imScene,cnt,)
 
     print(str(mWarp) + " = Homography transformation matrix")
 
-    # get inverse transformation matrix
-    mInverse = np.linalg.inv(mWarp)
+    imTag = drawDots(cTagModel.imTagDetect.copy(), cTagModel.ptsDetectArea)
+    imTagFromScene = cSeenTag.drawSceneWarpedToTag(cTagModel)
 
-    imTag = drawDots(cTag.imTagDetect.copy(), cTag.ptsDetectArea)
-    im3 = drawTagWarpedToScene(mWarp, imTag, imScene)
-
-
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    mFinal = addWarpRotation(imScene,cTag.imTagDetect)
-
-    imTagFromScene = cTag.imTagDetect.copy()
-    imTagFromScene = drawSceneWarpedToTag(mInverse, imSceneOrig, cTag.imTagDetect.shape)
-
-    im = imTagFromScene
-#    im = cv2.adaptiveThreshold(im, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
-
-
-    imTagFromSceneRotated = imTagFromScene.copy()
-
-    imTagFromSceneRotated = drawSceneWarpedToTag(mFinal, imSceneOrig, imTagFromScene.shape)
-    # cv2.warpPerspective(imSceneOrig, mFinal, imTagFromScene.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
-
-
-    imBoth = joinIm([[imTagFromScene],[imTag],[imScene] ])
-    # im3 =  cv2.cvtColor(im3 , cv2.COLOR_GRAY2RGB)
+    imBoth = joinIm([ [imTagFromScene], [imTag], [imScene] ])
 
     imAll = colorify(imBoth)
 
     # a = 0.5
     # imAll = cv2.resize(imAll, (0, 0), fx=a, fy=a)
-
     cv2.imshow('images',imAll)
 
     a = 0
