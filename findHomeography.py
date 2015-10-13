@@ -254,18 +254,35 @@ def makeBorder(im, bgColor):
 def makeLaplacian(im):
     return np.uint8(np.absolute(cv2.Laplacian(im, cv2.CV_64F)))
 
-def gaussIt(im):
-    a = 15
-    # return cv2.blur(im,(a,a))
-    a = 75
-    return cv2.bilateralFilter(im,9,a,a)
+# def gaussIt(im):
+#     a = 15
+#     # return cv2.blur(im,(a,a))
+#     a = 75
+#     return cv2.bilateralFilter(im,9,a,a)
 
-def joinIm(im1,im2):
-    hDiff = im2.shape[0] - im1.shape[0]
-    im1a = cv2.copyMakeBorder(im1,0,hDiff,0,0,cv2.BORDER_CONSTANT, value=0)
+def joinTwoIm(imBig,imSmall, vertically = 0, color = 0):
+    diff = imBig.shape[vertically] - imSmall.shape[vertically]
+    if vertically == 0:
+        imEnlarged = cv2.copyMakeBorder(imSmall, 0,diff, 0,   0, cv2.BORDER_CONSTANT, value=color)
+        return np.hstack([imBig,imEnlarged])
+    else:
+        imEnlarged = cv2.copyMakeBorder(imSmall, 0,   0, 0,diff, cv2.BORDER_CONSTANT, value=color)
+        return np.vstack([imBig,imEnlarged])
 
-    imBoth = np.hstack([im1a,im2])
-    return imBoth
+def joinIm(ims, vertically = 0, color = 0):
+    imLast = []
+    for im in ims:
+        im = im[0]
+        if imLast != []:
+            if (im.shape[vertically] - imLast.shape[vertically]) > 0:
+               # im is bigger
+               imLast = joinTwoIm(im,imLast,vertically, color)
+            else:
+               imLast = joinTwoIm(imLast,im,vertically, color)
+        else:
+            imLast = im
+
+    return imLast
 
 def colorify(im):
     return cv2.cvtColor(im, cv2.COLOR_GRAY2RGB)
@@ -457,6 +474,7 @@ def matDot(A,B):
 
 def addWarpRotation(imScene,imTag):
 
+    # findTagRotation()
     # find affine rotation
     angle = np.deg2rad(90)
     cos = np.cos(angle)
@@ -525,7 +543,7 @@ def findWarpMatrix(imScene, cTag):
     mWarp, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
     # matchesMask = mask.ravel().tolist()
     # what is mask ?!
-
+    # mWarp = addWarpRotation(mWarp, cTag, imScene)
 
     return dst_pts, mWarp
 
@@ -574,7 +592,8 @@ if __name__ == '__main__':
     # cv2.warpPerspective(imSceneOrig, mFinal, imTagFromScene.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
     # cv2.imshow('aa',im1copy)
 
-    imBoth = joinIm(im3,joinIm(imTagFromScene,joinIm(imTag,imScene)))
+    # imBoth = joinIm(im3,joinIm(imTagFromScene,joinIm(imTag,imScene)))
+    imBoth = joinIm([[imTagFromScene],[imTag],[imScene] ])
     # im3 =  cv2.cvtColor(im3 , cv2.COLOR_GRAY2RGB)
     # imAll = np.hstack([imBoth,im3])
     imAll = colorify(imBoth)

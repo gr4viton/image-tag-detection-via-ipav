@@ -105,7 +105,7 @@ def findTags(imScene, cTag):
         if mu['m00'] == 0: continue
         mc = (int(mu['m10'] / mu['m00']), int(mu['m01'] / mu['m00']))
 
-        # centroid
+        # DRAW centroid
         color = 200
         cv2.circle(imSceneWithDots, mc, 4, color, -1, 8, 0)
 
@@ -121,7 +121,7 @@ def findTags(imScene, cTag):
         cv2.drawContours(mask, contours, q, col, -1)
 
         imTagInScene = np.uint8( np.zeros(imScene.shape) )
-        cv2.bitwise_and(mask, imScene, imTagInScene)
+        cv2.bitwise_and(mask, imScene.copy(), imTagInScene)
         imTagInScene = imTagInScene * 255
 
 
@@ -302,26 +302,29 @@ def stepCV(frame, cTag):
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # track individual tags orientation
-    vis = []
-    for imTag in imTags:
-        a = 50
-
-        # make border for better drawing
-        im = cv2.copyMakeBorder(imTag, a, a, a, a, cv2.BORDER_CONSTANT, value=0)
-        vis.append(im)
-
-    imTags = vis
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    # virtual overlay
-    # imTags = findRotation(imTags)
+    # vis = []
+    # for imTag in imTags:
+    #     a = 50
+    #
+    #     # make border for better drawing
+    #     im = cv2.copyMakeBorder(imTag, a, a, a, a, cv2.BORDER_CONSTANT, value=0)
+    #     vis.append(im)
+    #
+    # imTags = vis
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # show of
 
-    # ims = [gray, cl1, blur, thresh, clear, flooded]
-    # ims = [gray, cl1, thresh, opened, paired]
-    # ims = [gray, cl1, thresh,clear,  flooded, paired]
-    ims = [cl1, thresh,killedBorder,  flooded, paired]
-    imWhole = np.vstack(ims)
+    ims = []
+    # ims.append( [gray] )
+    ims.append( [cl1] )
+    # ims.append( [blur] )
+    ims.append( [thresh] )
+    ims.append( [killedBorder] )
+    ims.append( [flooded] )
+    ims.append( [paired] )
+
+    imWhole = fh.joinIm(ims, 1)
+    # imWhole = np.vstack(ims)
 
     # if len(imTags) > 0:
     #     imTags = imTags[0]
@@ -330,19 +333,19 @@ def stepCV(frame, cTag):
 
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-def findRotation(imTags):
-    # print(len(imTags))
-    # if len(imTags) == 0:
-    #     return
-    im = imTags
-    # for im in imTags:
-    tracked = tracker.track(im)
-    # tracked = []
-    for tr in tracked:
-        cv2.polylines(im, [np.int32(tr.quad)], True, (255, 255, 255), 2)
-        for (x, y) in np.int32(tr.p1):
-            cv2.circle(im, (x, y), 2, (255, 255, 255))
-        im = draw_overlay(im, tr)
+# def findRotation(imTags):
+#     # print(len(imTags))
+#     # if len(imTags) == 0:
+#     #     return
+#     im = imTags
+#     # for im in imTags:
+#     tracked = tracker.track(im)
+#     # tracked = []
+#     for tr in tracked:
+#         cv2.polylines(im, [np.int32(tr.quad)], True, (255, 255, 255), 2)
+#         for (x, y) in np.int32(tr.p1):
+#             cv2.circle(im, (x, y), 2, (255, 255, 255))
+#         im = draw_overlay(im, tr)
 
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
