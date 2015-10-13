@@ -4,27 +4,95 @@ import cv2
 class C_observedTag:
     # static class variable - known Tag
     # tagModels = loadTagModels('2L')
+
     def __init__(self, imTagInScene):
         self.imScene = imTagInScene
-    # functions:
+        self.dst_pts = None
+        self.mWarp = None
+        self.mInverse = None
 
-        # dst_pts, mWarp = fh.findWarpMatrix(imTagInScene, cTagModel)
-    # find Warp etc
-    # find square corners
-    # etc..
+    def findWarpMatrix(self, cTag): # returns False on unsuccesfull matching
+        src_pts = cTag.ptsDetectArea
+        self.dst_pts = findSquare(self.imScene)
+        # self.mWarp, mask= cv2.findHomography(src_pts, self.dst_pts, cv2.RANSAC, 5.0)
+        self.mWarp, _ = cv2.findHomography(src_pts, self.dst_pts, cv2.LMEDS)
+        # matchesMask = mask.ravel().tolist()
+        # what is mask ?!
+
+        # get inverse transformation matrix
+        try:
+            self.mInverse = np.linalg.inv(self.mWarp)
+        except:
+            # raise Exception('Cannot calculate inverse matrix.')
+            print "Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!"
+            return False
+
+        # mWarp = addWarpRotation(mWarp, cTag, imScene)
+        return True
+
+    def drawTagWarpedToScene(self, imTag, imScene):
+        h,w = imTag.shape
+        pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+        dst = cv2.perspectiveTransform(pts, self.mWarp)
+        return cv2.polylines(imScene,[np.int32(dst)],True, 128,3, cv2.LINE_8)
+
+    def drawSceneWarpedToTag(self, cTagModel):
+        return cv2.warpPerspective(self.imScene.copy(), self.mInverse, cTagModel.imTagDetect.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
+
+    def addWarpRotation(imScene,imTag):
+
+        # findTagRotation()
+        # find affine rotation
+        angle = np.deg2rad(90)
+        cos = np.cos(angle)
+        sin = np.sin(angle)
+        # rotMatrix = np.array([[cos, -sin, 0], [sin, cos, 0], [0,0,1] ])
+        mRot = np.array([
+            [cos,   -sin,   0],
+            [sin,   cos,    0],
+            [0,     0,      1] ])
+        # rotMatrix = np.eye(3,3)
+
+        dx = -imTag.shape[0] / 2
+        dy = -imTag.shape[1] / 2
+
+        dx = -imScene.shape[0] / 2
+        dy = -imScene.shape[1] / 2
+        # dx = 10
+        # dy = 10
+        mTra = np.array([
+            [1,0,dx],
+            [0,1,dy],
+            [0,0,1]
+        ])
+        mTraInv = np.linalg.inv(mTra)
 
 
-def findWarpMatrix(imScene, cTag):
+        mFinal = mInverse.copy()
+        # mFinal = np.eye(3,3)
 
-    src_pts = cTag.ptsDetectArea
+        # np.dot(mFinal, mTra, mFinal )
+        # np.dot(mFinal, mRot, mFinal)
+        # np.dot(mFinal, mTraInv, mFinal )
+        # np.dot(mInverse, mFinal, mFinal)
 
-    dst_pts = findSquare(imScene)
-    mWarp, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
-    # matchesMask = mask.ravel().tolist()
-    # what is mask ?!
-    # mWarp = addWarpRotation(mWarp, cTag, imScene)
+        # mFinal = matDot(mInverse,mFinal)
 
-    return dst_pts, mWarp
+        # mFinal = matDot(mInverse, mFinal)
+        # mFinal = matDot(mFinal, mTra)
+        # # mFinal = matDot(mFinal, mRot)
+        # mFinal = matDot(mFinal, mTraInv)
+        #
+        # print("mInverse")
+        # print(mInverse)
+        # print("mRot")
+        # print(mRot)
+        # print("mFinal")
+        # print(mFinal)
+
+        return mFinal
+
+
 
 class C_tag: # tag model
     def __init__(self, strTag):
@@ -60,6 +128,7 @@ class C_tag: # tag model
     #     return
     # # symbol square - most inner = A
     # # symbol square frame 1 - 2nd most inner = B
+
 
 
 class C_area:
@@ -301,8 +370,8 @@ def drawRotatedBoundingBox(im, cnt, color = 255, lineWidth = 1):
     box = cv2.boxPoints(rect)
     int_box = np.int0(box)
     cv2.drawContours(im,[int_box],0,color,1)
-def findSquare(im):
 
+def findSquare(im):
     _, contours, hierarchy = cv2.findContours(im.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     corner_pts = []
     for q in np.arange(len(contours)):
@@ -337,70 +406,6 @@ def matDot(A,B):
     C = np.eye(3,3)
     np.dot(A,B,C)
     return C
-
-
-def addWarpRotation(imScene,imTag):
-
-    # findTagRotation()
-    # find affine rotation
-    angle = np.deg2rad(90)
-    cos = np.cos(angle)
-    sin = np.sin(angle)
-    # rotMatrix = np.array([[cos, -sin, 0], [sin, cos, 0], [0,0,1] ])
-    mRot = np.array([
-        [cos,   -sin,   0],
-        [sin,   cos,    0],
-        [0,     0,      1] ])
-    # rotMatrix = np.eye(3,3)
-
-    dx = -imTag.shape[0] / 2
-    dy = -imTag.shape[1] / 2
-
-    dx = -imScene.shape[0] / 2
-    dy = -imScene.shape[1] / 2
-    # dx = 10
-    # dy = 10
-    mTra = np.array([
-        [1,0,dx],
-        [0,1,dy],
-        [0,0,1]
-    ])
-    mTraInv = np.linalg.inv(mTra)
-
-
-    mFinal = mInverse.copy()
-    # mFinal = np.eye(3,3)
-
-    # np.dot(mFinal, mTra, mFinal )
-    # np.dot(mFinal, mRot, mFinal)
-    # np.dot(mFinal, mTraInv, mFinal )
-    # np.dot(mInverse, mFinal, mFinal)
-
-    # mFinal = matDot(mInverse,mFinal)
-
-    # mFinal = matDot(mInverse, mFinal)
-    # mFinal = matDot(mFinal, mTra)
-    # # mFinal = matDot(mFinal, mRot)
-    # mFinal = matDot(mFinal, mTraInv)
-    #
-    # print("mInverse")
-    # print(mInverse)
-    # print("mRot")
-    # print(mRot)
-    # print("mFinal")
-    # print(mFinal)
-
-    return mFinal
-
-def drawTagWarpedToScene(mWarp, imTag, imScene):
-    h,w = imTag.shape
-    pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
-    dst = cv2.perspectiveTransform(pts, mWarp)
-    return cv2.polylines(imScene,[np.int32(dst)],True, 128,3, cv2.LINE_8)
-
-def drawSceneWarpedToTag(mWarp, imScene, dims):
-    return cv2.warpPerspective(imScene, mWarp, dims) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
-
 
 
 if __name__ == '__main__':

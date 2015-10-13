@@ -5,6 +5,11 @@ import findHomeography as fh
 # import common
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+# global variables
+global tracker, ar_verts, ar_edges
+
+
+# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # function definitions
 
 def imclearborder(imgBW, radius):
@@ -59,23 +64,16 @@ def imclearborder(imgBW, radius):
     imgBWcopy = imgBWcopy * 255
     return imgBWcopy
 
-def draw_overlay(vis, tracked):
-    x0, y0, x1, y1 = tracked.target.rect
-    quad_3d = np.float32([[x0, y0, 0], [x1, y0, 0], [x1, y1, 0], [x0, y1, 0]])
-    fx = 0.5 + cv2.getTrackbarPos('focal', 'plane') / 50.0
-    h, w = vis.shape[:2]
-    K = np.float64([[fx * w, 0, 0.5 * (w - 1)],
-                    [0, fx * w, 0.5 * (h - 1)],
-                    [0.0, 0.0, 1.0]])
-    dist_coef = np.zeros(4)
-    ret, rvec, tvec = cv2.solvePnP(quad_3d, tracked.quad, K, dist_coef)
-    verts = ar_verts * [(x1 - x0), (y1 - y0), -(x1 - x0) * 0.3] + (x0, y0, 0)
-    verts = cv2.projectPoints(verts, rvec, tvec, K, dist_coef)[0].reshape(-1, 2)
-    for i, j in ar_edges:
-        (x0, y0), (x1, y1) = verts[i], verts[j]
-        cv2.line(vis, (int(x0), int(y0)), (int(x1), int(y1)), (255, 255, 0), 2)
-    return vis
+def drawCentroid(im, cnt, color = 255):
+    mu = cv2.moments(cnt)
+    mc = getCentralMoment(mu)
+    cv2.circle(im, tuple(int(i) for i in mc), 4, color, -1, 8, 0)
 
+def getCentralMoment(mu):
+    if mu['m00'] == 0:
+        raise Exception('Moment of image m00 is zero. Could not count central moment!')
+    return [ mu['m10'] / mu['m00'],
+             mu['m01'] / mu['m00'] ]
 
 def findTags(imScene, cTagModel):
 
@@ -92,19 +90,11 @@ def findTags(imScene, cTagModel):
 
         # moments
         mu = cv2.moments(cnt)
-        # leftTop = tuple(cnt[0, 0])
         if mu['m00'] == 0: continue
-        mc = (int(mu['m10'] / mu['m00']), int(mu['m01'] / mu['m00']))
+        mc = getCentralMoment(mu)
 
         # DRAW centroid
-        color = 200
-        cv2.circle(imSceneWithDots, mc, 4, color, -1, 8, 0)
-
-        # non-rotated boundingbox
-        x, y, w, h = cv2.boundingRect(cnt)
-        # cv2.rectangle(im, (x, y), (x + w, y + h), color, 2)
-        # bounding box slice
-        # imTagInScene = imIn[y:y + h, x:x + w]
+        drawCentroid(imSceneWithDots,cnt, 180)
 
         # slice out imTagInScene
         mask = np.uint8( np.zeros(imScene.shape) )
@@ -131,19 +121,12 @@ def findTags(imScene, cTagModel):
         # if it sustains tha check of some kind
         if 1:
             cSeenTag = fh.C_observedTag(imTagInScene)
-            # cSeenTag.findWarpMatrix()
-            # mWarp = cSeenTag.mWarp
-            #
-            dst_pts, mWarp = fh.findWarpMatrix(imTagInScene, cTagModel)
-
-            # get inverse transformation matrix
-            try:
-                mInverse = np.linalg.inv(mWarp)
-                imTagRecreated = fh.drawSceneWarpedToTag(mInverse, imTagInScene, cTagModel.imTagDetect.shape)
-                imTags.append(imTagRecreated )
-            except:
-                print "Probably bad tag detected"
+            success = cSeenTag.findWarpMatrix(cTagModel)
+            if not success:
                 continue
+
+            imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)
+            imTags.append(imTagRecreated )
             cSeenTags.append(cSeenTag)
 
     return imSceneWithDots, imTags
@@ -233,30 +216,30 @@ def stepCV(frame, cTag):
     im = cv2.resize(frame, (0, 0), fx=a, fy=a)
     # im = frame
 
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # ____________________________________________________
     # RGB -> gray
     gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
     im = gray
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # ____________________________________________________
     # adaptive image histogram equalization - create a CLAHE object (Arguments are optional).
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     cl1 = clahe.apply(im)
     im = cl1
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # ____________________________________________________
     # gaussian blur
     # blur = gaussIt(im,7)
     blur = blurIt(im,75)
     im = blur
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # ____________________________________________________
     # Threshing - to get binary image out of gray one
     im = inverte(im.copy())
     thresh = threshIT(im, 'otsu')
     im = thresh
     im = inverte(im.copy())
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # ____________________________________________________
     # inversion
     # im = inverte(im.copy())
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # ____________________________________________________
     # imclearborder - maskes out all contours which are touching the border
     killerBorder = 5
     killedBorder= imclearborder(im, killerBorder)
@@ -264,25 +247,27 @@ def stepCV(frame, cTag):
     killedBorder = cv2.copyMakeBorder(killedBorder[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
 
     im = killedBorder
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # ____________________________________________________
     # bwareaopen
     # delete too small groups of pixels - with contours - slow
     # col = 64
     # opened = bwareaopen(im, 5*5, col)
     # im = opened
 
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # ____________________________________________________
     # imfill
     # flood
     flooded = im.copy()
     floodIt(flooded, 255)
     floodIt(flooded, 0)
     im = flooded
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # ____________________________________________________
     # findTags and put them into imTags list
     paired, imTags = findTags(im, cTag)
 
 
+    # ____________________________________________________
+    # create progress image
     ims = []
     # ims.append( [gray] )
     ims.append( [cl1] )
@@ -293,13 +278,15 @@ def stepCV(frame, cTag):
     ims.append( [paired] )
 
     imWhole = fh.joinIm(ims, 1)
-
+    # ____________________________________________________
+    # FPS
     font = cv2.FONT_HERSHEY_COMPLEX_SMALL
     col = 255
     text = 'FPS = ?'
     hw = (1,20)
     cv2.putText(imWhole, text, hw , font, 1, 0, 5) # , cv2.LINE_AA )
     cv2.putText(imWhole, text, hw, font, 1, col)
+    # ____________________________________________________
     return imWhole, imTags
 
 def loopCV(cap):
@@ -331,7 +318,7 @@ if __name__ == '__main__':
 
     tbValue = 3
     maxValue = 6
-    cv2.createTrackbar("trackMe", "image", tbValue, maxValue, update)
+    # cv2.createTrackbar("trackMe", "image", tbValue, maxValue, update)
     loopCV(cap)
     cap.release()
     cv2.destroyAllWindows()
