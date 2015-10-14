@@ -50,7 +50,7 @@ class C_observedTag:
             self.mInverse = np.linalg.inv(self.mWarp)
         except:
             # raise Exception('Cannot calculate inverse matrix.')
-            print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
+            # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
             return 1
 
         self.imWarped = self.drawSceneWarpedToTag(cTagModel)
@@ -63,27 +63,40 @@ class C_observedTag:
 
         # print cTagModel.ptsSymbolArea
         imSymbolArea = cTagModel.symbolArea.getRoi( self.imWarped )
-        # cv2.imshow('symbolArea',imSymbolArea )
-
+            # cv2.imshow('symbolArea',imSymbolArea )
 
         aSubs = cTagModel.symbolSubAreas
         # print aSubs
 
         imSymbolSubAreas = []
         for area in aSubs:
-            imSub = area.getRoi(self.imWarped)
+            imSub = area.getRoi(imSymbolArea)
+            # print area.hw
+            # print area.tl
             imSymbolSubAreas.append(imSub)
+            # print(imSub.shape)
+            cv2.imshow('imSub', imSub )
+            waitKeyExit()
 
-        squareSums = \
-            [ [ np.sum(imSub) / (imSub.shape[0]*imSub.shape[1]) ,
-               np.sum(imSubModel) / (imSubModel.shape[0]*imSubModel.shape[1]) ]
-            for imSub, imSubModel
-            in zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)]
+        # for im in cTagModel.imSymbolSubAreas:
+        #     cv2.imshow('imSub', im)
+        #     waitKeyExit()
+
+        squareMeans = \
+            [  np.int( np.round( np.sum(imSub) / (imSub.shape[0]*imSub.shape[1]) / 255.0 ) )
+                for imSub in imSymbolSubAreas ]
+        # squareMeanDiffs = \
+        #     [  np.sum(imSub) / (imSub.shape[0]*imSub.shape[1]) -
+        #        np.sum(imSubModel) / (imSubModel.shape[0]*imSubModel.shape[1])
+        #     for imSub, imSubModel
+        #     in zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)]
 
         # a = [1, 2, 3, 4]
         # b = [5,6,7,8]
         # print zip(a,b)
-        print squareSums
+        thresh = 0.6
+        print squareMeans
+
         # print len(cTagModel.imSymbolSubAreas)
         # print zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)
         # waitKeyExit()
@@ -204,6 +217,8 @@ class C_tag: # tag model
 
             self.imTag = readIm('full', strTag)
             self.imTagDetect = readIm('invnoborder', strTag)
+            self.imSymbolArea = self.symbolArea.getRoi(self.imTagDetect)
+            self.imDetectArea = self.detectArea.getRoi(self.imTagDetect)
 
             self.ptsSymbolArea = getBoxCorners(self.symbolArea.tl[0], self.symbolArea.hw[0] )
             self.ptsDetectArea = getBoxCorners(self.detectArea.tl[0], self.detectArea.hw[0] )
@@ -213,8 +228,14 @@ class C_tag: # tag model
 
             self.imSymbolSubAreas = []
             for area in self.symbolSubAreas:
-                imSub = area.getRoi(self.imTagDetect)
+                print area.hw
+                print area.tl
+                imSub = area.getRoi(self.imSymbolArea)
                 self.imSymbolSubAreas.append(imSub)
+
+                # cv2.imshow('imSub', imSub)
+                # waitKeyExit()
+
 
     #
     # def __init__(self, area):
@@ -242,13 +263,13 @@ class C_area:
         return im[  self.tl[0] : self.tl[0] + self.hw[0],
                     self.tl[1] : self.tl[1] + self.hw[1] ]
 
-    def getSubAreas(self, row, col):
+    def getSubAreas(self, rows, cols):
         # one cell dimensions
-        hSub = int(self.hw[0] / row)
-        wSub = int(self.hw[1] / col)
+        hSub = int(self.hw[0] / rows)
+        wSub = int(self.hw[1] / cols)
 
         # border pixels vertical
-        hSubMulti = hSub * row
+        hSubMulti = hSub * rows
         if hSubMulti < self.hw[0]:
             # must append - > append to the last one
             hDiff = self.hw[0] - hSubMulti
@@ -256,7 +277,7 @@ class C_area:
             hDiff = 0
 
         # border pixels horizontal
-        wSubMulti = wSub * col
+        wSubMulti = wSub * cols
         if wSubMulti < self.hw[1]:
             # must append - > append to the last one
             wDiff = self.hw[1] - wSubMulti
@@ -266,18 +287,19 @@ class C_area:
         # create the subareas
         aSubs = []
         hw = (hSub, wSub)
-        for iRow in range(0,row):
-            for iCol in range(0,col):
-                tl = (row*hSub, col*wSub)
+        for iRow in range(0,rows):
+            for iCol in range(0,cols):
+                tl = (iRow*hSub, iCol*wSub)
                 aSub = C_area( hw, tl)
-                if iRow == row-1:
-                    if iCol == col-1:
+                if iRow == rows-1:
+                    if iCol == cols-1:
                         aSub = C_area( (hSub+hDiff,wSub+wDiff), tl)
                     else:
                         aSub = C_area( (hSub,wSub+wDiff), tl)
-                if iCol == col-1:
+                if iCol == cols-1:
                     aSub = C_area( (hSub,wSub+wDiff), tl)
-
+                # print aSub.hw
+                # print aSub.tl
                 aSubs.append(aSub)
 
         return aSubs
