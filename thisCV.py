@@ -111,7 +111,7 @@ def findTags(imScene, cTagModel):
                 continue
 
             imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)
-            fh.drawCentroid(imSceneWithDots,cnt, 180) # DRAW centroid
+            fh.drawCentroid(imSceneWithDots, cnt, 180) # DRAW centroid
 
             imTags.append(imTagRecreated )
             cSeenTags.append(cSeenTag)

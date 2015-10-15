@@ -23,6 +23,9 @@ import findHomeography as fh
 
 # tkinter GUI functions----------------------------------------------------------
 global maxLenQueue
+global videoId
+global dontRecord
+global cap
 
 def quit_(root, process, *whatever):
     process.terminate()
@@ -79,21 +82,42 @@ def update_all(root, params):
 # multiprocessing image processing functions-------------------------------------
 def image_capture(queue, queTag):
     global maxLenQueue
+
+    global dontRecord
+    global cap
+    global videoId
     maxLenQueue = 5
-    cap = cv2.VideoCapture(0)
+    videoId = 1
+    dontRecord = False
+    cap = cv2.VideoCapture(videoId)
     loopingCV = 1
     cTag = fh.readTag('2L')
     while loopingCV:
-
-        flag, frame = cap.read()
-        if flag == 0:
-            # return None
-            continue
-        imWhole, imTags = stepCV(frame,cTag)
-        if queue.qsize() < maxLenQueue:
-            queue.put(imWhole)
-        queTag.put(imTags)
+        if dontRecord == False:
+            flag, frame = cap.read()
+            if flag == 0:
+                # return None
+                continue
+            imWhole, imTags = stepCV(frame,cTag)
+            if queue.qsize() < maxLenQueue:
+                queue.put(imWhole)
+            queTag.put(imTags)
     cap.release()
+
+def toggleVideoId():
+    global videoId
+    if videoId is None:
+        videoId = 0
+    videoId = np.mod( videoId + 1 , 2)
+    setVideoCapture(videoId)
+
+def setVideoCapture(sourceId):
+    global dontRecord
+    global cap
+    dontRecord = True
+    cap.release()
+    cap = cv2.VideoCapture(sourceId)
+    dontRecord = False
 
 
 def GUI_setup(root):
@@ -105,7 +129,8 @@ def GUI_setup(root):
     frLeft = tk.LabelFrame(root, padx=5, width= 320, text="Add by list" )
     frTags = tk.LabelFrame(root, padx=5, width= 320, text="Detected tags")
     # ____________________________________________________ images
-    imlLabel = tk.Label(frLeft)
+    imlLabel = tk.Button(frLeft, command=lambda: toggleVideoId())
+
     imlTags = tk.Label(frTags)
     # ____________________________________________________ texts
     # ____________________________________________________ sliders

@@ -14,6 +14,7 @@ class C_observedTag:
         self.cntExternal = None
         self.mu = None
         self.mc = None
+        self.rotation = None
         # if cntExternal is not None:
         #     cntExternal
 
@@ -55,59 +56,48 @@ class C_observedTag:
 
         self.imWarped = self.drawSceneWarpedToTag(cTagModel)
 
-        # find out if it is really a tag
-        d = cTagModel.detectArea
-        self.imWarped = self.drawSceneWarpedToTag(cTagModel)
-        # detectArea = cTagModel.symbolArea.getRoi( self.imWarped )
+        check = self.checkTag(cTagModel)
+        if check != 0:
+            return 1
 
-
-        # print cTagModel.ptsSymbolArea
-        imSymbolArea = cTagModel.symbolArea.getRoi( self.imWarped )
-            # cv2.imshow('symbolArea',imSymbolArea )
-
-        aSubs = cTagModel.symbolSubAreas
-        # print aSubs
-
-        imSymbolSubAreas = []
-        for area in aSubs:
-            imSub = area.getRoi(imSymbolArea)
-            # print area.hw
-            # print area.tl
-            imSymbolSubAreas.append(imSub)
-            # print(imSub.shape)
-            cv2.imshow('imSub', imSub )
-            waitKeyExit()
-
-        # for im in cTagModel.imSymbolSubAreas:
-        #     cv2.imshow('imSub', im)
-        #     waitKeyExit()
-
-        squareMeans = \
-            [  np.int( np.round( np.sum(imSub) / (imSub.shape[0]*imSub.shape[1]) / 255.0 ) )
-                for imSub in imSymbolSubAreas ]
-        # squareMeanDiffs = \
-        #     [  np.sum(imSub) / (imSub.shape[0]*imSub.shape[1]) -
-        #        np.sum(imSubModel) / (imSubModel.shape[0]*imSubModel.shape[1])
-        #     for imSub, imSubModel
-        #     in zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)]
-
-        # a = [1, 2, 3, 4]
-        # b = [5,6,7,8]
-        # print zip(a,b)
-        thresh = 0.6
-        print squareMeans
-
-        # print len(cTagModel.imSymbolSubAreas)
-        # print zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)
-        # waitKeyExit()
-
-        # thresholded element-wise addition
-        # procentual histogram - of seenTag vs of tagModel
-
-
-        # mWarp = addWarpRotation(mWarp, cTagModel, imScene)
+        self.addWarpRotation(cTagModel)
         return 0
 
+    def checkTag(self, cTagModel):
+        # find out if it is really a tag
+        self.imWarped = self.drawSceneWarpedToTag(cTagModel)
+        if cTagModel.checkType == 'symbolSquareMeanValue':
+
+            imSymbolArea = cTagModel.symbolArea.getRoi( self.imWarped )
+
+            imSymbolSubAreas = []
+            for area in cTagModel.symbolSubAreas:
+                imSub = area.getRoi(imSymbolArea)
+                imSymbolSubAreas.append(imSub)
+
+            squareMeans = cTagModel.getSquareMeans(imSymbolSubAreas)
+            # print squareMeans
+
+            rotation = []
+            for modelCode in cTagModel.rotatedModelCodes:
+                if modelCode == squareMeans:
+                    rotation.append(1)
+                else:
+                    rotation.append(0)
+
+            # print rotation
+            if sum(rotation) == 0:
+                return 1
+            if sum(rotation) > 1:
+                return 2 # two or more possible rotations
+
+            self.rotation = rotation
+            # print len(cTagModel.imSymbolSubAreas)
+            # print zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)
+            # waitKeyExit()
+        return 0
+        # thresholded element-wise addition
+        # procentual histogram - of seenTag vs of tagModel
 
     def findSquare(self):  # returns 0 on succesfull findings
         if self.cntExternal is None:
@@ -144,38 +134,47 @@ class C_observedTag:
 
     def drawSceneWarpedToTag(self, cTagModel):
         # print self.mInverse
-        return cv2.warpPerspective(self.imScene.copy(), self.mInverse, cTagModel.imTagDetect.shape) #, cv2.INTER_LINEAR, cv2.BORDER_CONSTANT)
+        return cv2.warpPerspective(self.imScene.copy(), self.mInverse, cTagModel.imTagDetect.shape,
+                                   flags=cv2.INTER_LINEAR )
+                                    #, , cv2.BORDER_CONSTANT)
 
-    def addWarpRotation(self,imScene,imTag):
+    def addWarpRotation(self,cTagModel):
 
-        # findTagRotation()
-        # find affine rotation
-        angle = np.deg2rad(90)
+        angleDec = np.sum( [ i*90 for i in range(0,4) if self.rotation[i] != 0 ] )
+        angle = np.deg2rad(angleDec )
+
         cos = np.cos(angle)
         sin = np.sin(angle)
-        # rotMatrix = np.array([[cos, -sin, 0], [sin, cos, 0], [0,0,1] ])
         mRot = np.array([
-            [cos,   -sin,   0],
-            [sin,   cos,    0],
+            [cos,   sin,   0],
+            [-sin,   cos,    0],
             [0,     0,      1] ])
-        # rotMatrix = np.eye(3,3)
 
-        dx = -imTag.shape[0] / 2
-        dy = -imTag.shape[1] / 2
+        [dx, dy] = [-d / 2 for d in cTagModel.imTag.shape]
 
-        dx = -imScene.shape[0] / 2
-        dy = -imScene.shape[1] / 2
-        # dx = 10
-        # dy = 10
         mTra = np.array([
             [1,0,dx],
             [0,1,dy],
             [0,0,1]
         ])
-        mTraInv = np.linalg.inv(mTra)
+
+        mTraInv = np.array([
+            [1,0,-dx],
+            [0,1,-dy],
+            [0,0,1]
+        ])
+
+        mRotTra = matDot(mTraInv , matDot(mRot, mTra) )
+        try:
+            invRotTra = np.linalg.inv( mRotTra )
+        except:
+            # raise Exception('Cannot calculate inverse matrix.')
+            # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
+            return 1
 
 
-        mFinal = self.mInverse.copy()
+        self.mInverse = matDot(invRotTra, self.mInverse)
+
         # mFinal = np.eye(3,3)
 
         # np.dot(mFinal, mTra, mFinal )
@@ -197,10 +196,10 @@ class C_observedTag:
         # print("mFinal")
         # print(mFinal)
 
-        return mFinal
 
 
-class C_tag: # tag model
+
+class C_tagModel: # tag model
     def __init__(self, strTag):
         # later have function to get this from actual image
 
@@ -215,6 +214,7 @@ class C_tag: # tag model
             b = bDetectArea
             self.detectArea = C_area([hwWhole - b*2]*2,[b]*2)
 
+            self.checkType = 'symbolSquareMeanValue'
             self.imTag = readIm('full', strTag)
             self.imTagDetect = readIm('invnoborder', strTag)
             self.imSymbolArea = self.symbolArea.getRoi(self.imTagDetect)
@@ -224,18 +224,25 @@ class C_tag: # tag model
             self.ptsDetectArea = getBoxCorners(self.detectArea.tl[0], self.detectArea.hw[0] )
 
             num = 2
+
             self.symbolSubAreas= self.symbolArea.getSubAreas(num, num)
 
-            self.imSymbolSubAreas = []
-            for area in self.symbolSubAreas:
-                print area.hw
-                print area.tl
-                imSub = area.getRoi(self.imSymbolArea)
-                self.imSymbolSubAreas.append(imSub)
+            self.rotatedModelCodes = []
+            for rot in range(0,4):
+                imSymbolSubAreas = []
+                for area in self.symbolSubAreas:
+                    imSub = area.getRoi( np.rot90(self.imSymbolArea, rot ) )
+                    imSymbolSubAreas.append(imSub)
 
-                # cv2.imshow('imSub', imSub)
-                # waitKeyExit()
+                modelCode = self.getSquareMeans(imSymbolSubAreas)
+                self.rotatedModelCodes.append(modelCode)
 
+
+    def getSquareMeans(self, imSymbolSubAreas):
+        return [  np.int( np.round(
+                np.sum(imSub) / (imSub.shape[0]*imSub.shape[1]) / 255.0
+                ) )
+                for imSub in imSymbolSubAreas ]
 
     #
     # def __init__(self, area):
@@ -344,7 +351,7 @@ def getBoxCorners(boxOffset, boxSide):
     return np.float32(pts)
 
 def readTag(strTag):
-    cTag = C_tag(strTag)
+    cTag = C_tagModel(strTag)
     return cTag
 
 def makeBorder(im, bgColor):
