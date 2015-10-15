@@ -6,12 +6,12 @@ class C_observedTag:
     # tagModels = loadTagModels('2L')
 
     def __init__(self, imTagInScene):
-        self.imScene = imTagInScene
-        self.imWarped = None
-        self.dst_pts = None
-        self.mWarp = None
+        self.imScene = imTagInScene # image of scene in which the tag is supposed to be
+        self.imWarped = None # ground floor image of tag transformed from imScene
+        self.dst_pts = None # perspectively deformed detectionArea square corner points
+        self.mWarp2scene = None # transformation matrix from scene
         self.mInverse = None
-        self.cntExternal = None
+        self.cntExternal = None # detectionArea external contour
         self.mu = None
         self.mc = None
         self.rotation = None
@@ -41,14 +41,14 @@ class C_observedTag:
         if self.findSquare() != 0:
             # print('Could not find square in image')
             return 1
-        # self.mWarp, mask= cv2.findHomography(src_pts, self.dst_pts, cv2.RANSAC, 5.0)
-        self.mWarp, _ = cv2.findHomography(src_pts, self.dst_pts, cv2.LMEDS)
+        # self.mWarp2scene, mask= cv2.findHomography(src_pts, self.dst_pts, cv2.RANSAC, 5.0)
+        self.mWarp2scene, _ = cv2.findHomography(src_pts, self.dst_pts, cv2.LMEDS)
         # matchesMask = mask.ravel().tolist()
         # what is mask ?!
 
         # get inverse transformation matrix
         try:
-            self.mInverse = np.linalg.inv(self.mWarp)
+            self.mInverse = np.linalg.inv(self.mWarp2scene)
         except:
             # raise Exception('Cannot calculate inverse matrix.')
             # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
@@ -56,16 +56,16 @@ class C_observedTag:
 
         self.imWarped = self.drawSceneWarpedToTag(cTagModel)
 
-        check = self.checkTag(cTagModel)
+        check = self.addWarpRotation(cTagModel)
         if check != 0:
             return 1
 
-        self.addWarpRotation(cTagModel)
+
         return 0
 
-    def checkTag(self, cTagModel):
+    def addWarpRotation(self,cTagModel):
+
         # find out if it is really a tag
-        self.imWarped = self.drawSceneWarpedToTag(cTagModel)
         if cTagModel.checkType == 'symbolSquareMeanValue':
 
             imSymbolArea = cTagModel.symbolArea.getRoi( self.imWarped )
@@ -78,23 +78,21 @@ class C_observedTag:
             squareMeans = cTagModel.getSquareMeans(imSymbolSubAreas)
             # print squareMeans
 
-            rotation = []
+            self.rotation  = []
             for modelCode in cTagModel.rotatedModelCodes:
                 if modelCode == squareMeans:
-                    rotation.append(1)
+                    self.rotation .append(1)
                 else:
-                    rotation.append(0)
+                    self.rotation .append(0)
 
             # print rotation
-            if sum(rotation) == 0:
+            if sum(self.rotation ) == 0:
                 return 1
-            if sum(rotation) > 1:
+            if sum(self.rotation ) > 1:
                 return 2 # two or more possible rotations
 
-            self.rotation = rotation
-            # print len(cTagModel.imSymbolSubAreas)
-            # print zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)
-            # waitKeyExit()
+            self.rotIdx = np.sum([ i*self.rotation[i] for i in range(0,4) ])
+            self.mInverse = matDot(cTagModel.mInvRotTra[self.rotIdx], self.mInverse)
         return 0
         # thresholded element-wise addition
         # procentual histogram - of seenTag vs of tagModel
@@ -111,10 +109,6 @@ class C_observedTag:
         # rotated boundingbox
         rect = cv2.minAreaRect(cnt)
         box = cv2.boxPoints(rect)
-
-        # print rect
-        # print box
-
         # corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
         # corner_pts = findFarthestFromCenter(im,mc,box,cnt)
         corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im,self.mc,box,cnt)
@@ -129,7 +123,7 @@ class C_observedTag:
     def drawTagWarpedToScene(self, imTag, imScene):
         h,w = imTag.shape
         pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
-        dst = cv2.perspectiveTransform(pts, self.mWarp)
+        dst = cv2.perspectiveTransform(pts, self.mWarp2scene)
         return cv2.polylines(imScene,[np.int32(dst)],True, 128,3, cv2.LINE_8)
 
     def drawSceneWarpedToTag(self, cTagModel):
@@ -138,63 +132,6 @@ class C_observedTag:
                                    flags=cv2.INTER_LINEAR )
                                     #, , cv2.BORDER_CONSTANT)
 
-    def addWarpRotation(self,cTagModel):
-
-        angleDec = np.sum( [ i*90 for i in range(0,4) if self.rotation[i] != 0 ] )
-        angle = np.deg2rad(angleDec )
-
-        cos = np.cos(angle)
-        sin = np.sin(angle)
-        mRot = np.array([
-            [cos,   sin,   0],
-            [-sin,   cos,    0],
-            [0,     0,      1] ])
-
-        [dx, dy] = [-d / 2 for d in cTagModel.imTag.shape]
-
-        mTra = np.array([
-            [1,0,dx],
-            [0,1,dy],
-            [0,0,1]
-        ])
-
-        mTraInv = np.array([
-            [1,0,-dx],
-            [0,1,-dy],
-            [0,0,1]
-        ])
-
-        mRotTra = matDot(mTraInv , matDot(mRot, mTra) )
-        try:
-            invRotTra = np.linalg.inv( mRotTra )
-        except:
-            # raise Exception('Cannot calculate inverse matrix.')
-            # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
-            return 1
-
-
-        self.mInverse = matDot(invRotTra, self.mInverse)
-
-        # mFinal = np.eye(3,3)
-
-        # np.dot(mFinal, mTra, mFinal )
-        # np.dot(mFinal, mRot, mFinal)
-        # np.dot(mFinal, mTraInv, mFinal )
-        # np.dot(mInverse, mFinal, mFinal)
-
-        # mFinal = matDot(mInverse,mFinal)
-
-        # mFinal = matDot(mInverse, mFinal)
-        # mFinal = matDot(mFinal, mTra)
-        # # mFinal = matDot(mFinal, mRot)
-        # mFinal = matDot(mFinal, mTraInv)
-        #
-        # print("mInverse")
-        # print(mInverse)
-        # print("mRot")
-        # print(mRot)
-        # print("mFinal")
-        # print(mFinal)
 
 
 
@@ -223,10 +160,10 @@ class C_tagModel: # tag model
             self.ptsSymbolArea = getBoxCorners(self.symbolArea.tl[0], self.symbolArea.hw[0] )
             self.ptsDetectArea = getBoxCorners(self.detectArea.tl[0], self.detectArea.hw[0] )
 
+            # detection of square subAreas in SymbolArea
             num = 2
 
             self.symbolSubAreas= self.symbolArea.getSubAreas(num, num)
-
             self.rotatedModelCodes = []
             for rot in range(0,4):
                 imSymbolSubAreas = []
@@ -236,6 +173,31 @@ class C_tagModel: # tag model
 
                 modelCode = self.getSquareMeans(imSymbolSubAreas)
                 self.rotatedModelCodes.append(modelCode)
+
+            # 90 degree rotation preprocessed matrices
+            [dx, dy] = [-d / 2 for d in self.imTag.shape]
+            self.mTra = np.array([ [1,0,dx], [0,1,dy], [0,0,1] ])
+            self.mTraInv = np.array([ [1,0,-dx], [0,1,-dy], [0,0,1] ])
+
+            self.mRotTra = []
+            self.mInvRotTra = []
+            for angleIdx in range(0,4): # 0, 90, 180, 270 in counterclockwise?
+                angle = np.deg2rad(angleIdx*90)
+
+                cos = np.cos(angle)
+                sin = np.sin(angle)
+                mRot = np.array([ [cos,   sin,   0], [-sin,   cos,    0], [0,     0,      1] ])
+                mRotTra = matDot(self.mTraInv , matDot(mRot, self.mTra) )
+                try:
+                    mInvRotTra = np.linalg.inv( mRotTra )
+                except:
+                    # raise Exception('Cannot calculate inverse matrix.')
+                    # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
+                    return 1
+                self.mRotTra.append(mRotTra)
+                self.mInvRotTra.append( mInvRotTra )
+
+
 
 
     def getSquareMeans(self, imSymbolSubAreas):
@@ -258,7 +220,6 @@ class C_tagModel: # tag model
     #     return
     # # symbol square - most inner = A
     # # symbol square frame 1 - 2nd most inner = B
-
 
 
 class C_area:
@@ -569,7 +530,7 @@ if __name__ == '__main__':
 
     imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)
 
-    mWarp = cSeenTag.mWarp
+    mWarp = cSeenTag.mWarp2scene
 
     print(cTagModel.ptsDetectArea)
     print(cSeenTag.dst_pts)

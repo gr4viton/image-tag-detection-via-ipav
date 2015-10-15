@@ -252,7 +252,6 @@ def stepCV(frame, cTag):
     # findTags and put them into imTags list
     paired, imTags = findTags(im, cTag)
 
-
     # ____________________________________________________
     # create progress image
     ims = []
