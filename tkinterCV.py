@@ -87,7 +87,7 @@ def image_capture(queue, queTag):
     global cap
     global videoId
     maxLenQueue = 5
-    videoId = 1
+    videoId = 0
     dontRecord = False
     cap = cv2.VideoCapture(videoId)
     loopingCV = 1
