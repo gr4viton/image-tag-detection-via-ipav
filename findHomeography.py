@@ -9,16 +9,12 @@ class C_observedTag:
         self.imScene = imTagInScene # image of scene in which the tag is supposed to be
         self.imWarped = None # ground floor image of tag transformed from imScene
         self.dst_pts = None # perspectively deformed detectionArea square corner points
-        self.mWarp2scene = None # transformation matrix from scene
-        self.mInverse = None
+        self.mWarp2tag = None # transformation matrix from perspective scene to ground floor tag
+        self.mWarp2scene = None # transformation matrix from ground floor tag to perspective scene
         self.cntExternal = None # detectionArea external contour
-        self.mu = None
-        self.mc = None
-        self.rotation = None
-        # if cntExternal is not None:
-        #     cntExternal
-
-        # else:
+        self.mu = None # all image moments
+        self.mc = None # central moment
+        self.rotation = None # square symbols in symbolArea check possible rotations similar to cTagModel - [0,90,180,270]deg
 
     def calcMoments(self):  # returns 0 on success
         self.mu = cv2.moments(self.cntExternal)
@@ -37,18 +33,21 @@ class C_observedTag:
         return self.calcMoments()
 
     def findWarpMatrix(self, cTagModel): # returns 0 on succesfull matching
-        src_pts = cTagModel.ptsDetectArea
+
         if self.findSquare() != 0:
             # print('Could not find square in image')
             return 1
-        # self.mWarp2scene, mask= cv2.findHomography(src_pts, self.dst_pts, cv2.RANSAC, 5.0)
-        self.mWarp2scene, _ = cv2.findHomography(src_pts, self.dst_pts, cv2.LMEDS)
+        # self.mWarp2tag, mask= cv2.findHomography(src_pts, self.dst_pts, cv2.RANSAC, 5.0)
+        # method = cv2.LMEDS
+        src_pts = cTagModel.ptsDetectArea
+
+        self.mWarp2scene, _ = cv2.findHomography(src_pts, self.dst_pts, )
         # matchesMask = mask.ravel().tolist()
         # what is mask ?!
 
         # get inverse transformation matrix
         try:
-            self.mInverse = np.linalg.inv(self.mWarp2scene)
+            self.mWarp2tag = np.linalg.inv(self.mWarp2scene)
         except:
             # raise Exception('Cannot calculate inverse matrix.')
             # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
@@ -92,7 +91,7 @@ class C_observedTag:
                 return 2 # two or more possible rotations
 
             self.rotIdx = np.sum([ i*self.rotation[i] for i in range(0,4) ])
-            self.mInverse = matDot(cTagModel.mInvRotTra[self.rotIdx], self.mInverse)
+            self.mWarp2tag = matDot(cTagModel.mInvRotTra[self.rotIdx], self.mWarp2tag)
         return 0
         # thresholded element-wise addition
         # procentual histogram - of seenTag vs of tagModel
@@ -123,12 +122,12 @@ class C_observedTag:
     def drawTagWarpedToScene(self, imTag, imScene):
         h,w = imTag.shape
         pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
-        dst = cv2.perspectiveTransform(pts, self.mWarp2scene)
+        dst = cv2.perspectiveTransform(pts, self.mWarp2tag)
         return cv2.polylines(imScene,[np.int32(dst)],True, 128,3, cv2.LINE_8)
 
     def drawSceneWarpedToTag(self, cTagModel):
         # print self.mInverse
-        return cv2.warpPerspective(self.imScene.copy(), self.mInverse, cTagModel.imTagDetect.shape,
+        return cv2.warpPerspective(self.imScene.copy(), self.mWarp2tag, cTagModel.imTagDetect.shape,
                                    flags=cv2.INTER_LINEAR )
                                     #, , cv2.BORDER_CONSTANT)
 
@@ -530,7 +529,7 @@ if __name__ == '__main__':
 
     imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)
 
-    mWarp = cSeenTag.mWarp2scene
+    mWarp = cSeenTag.mWarp2tag
 
     print(cTagModel.ptsDetectArea)
     print(cSeenTag.dst_pts)

@@ -104,6 +104,17 @@ def image_capture(queue, queTag):
             queTag.put(imTags)
     cap.release()
 
+def initVideoCapture():
+    global videoId
+    global dontRecord
+    global cap
+
+    videoId = 0
+    dontRecord = True
+    cap = cv2.VideoCapture(videoId)
+    cap.release()
+    setVideoCapture(videoId)
+
 def toggleVideoId():
     global videoId
     if videoId is None:
@@ -116,7 +127,9 @@ def setVideoCapture(sourceId):
     global cap
     dontRecord = True
     cap.release()
+    print 'Cap released'
     cap = cv2.VideoCapture(sourceId)
+    print 'Configured cv2.VideoCapture source ID to '+str(sourceId)
     dontRecord = False
 
 
@@ -175,6 +188,7 @@ def HOTKEY_setup(root, p):
 
 if __name__ == '__main__':
     global maxLenQueue
+    initVideoCapture()
     maxLenQueue = 1
 
     queue = Queue( )
