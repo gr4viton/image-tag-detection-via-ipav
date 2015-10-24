@@ -36,17 +36,45 @@ def convert_rgb_to_texture(im_rgb):
     texture1.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
     return texture1
 
-class KivyStepWidget(GridLayout):
-    # toggle_object = ObjectProperty()
+class StepWidget(GridLayout):
     name = StringProperty()
     drawing = ObjectProperty()
     kivy_image = ObjectProperty()
 
-    def __init__(self, name, **kwargs):
-        super(KivyStepWidget, self).__init__(**kwargs)
-        self.name = name
+    # def __init__(self, name, **kwargs):
+    def __init__(self, **kwargs):
+        super(StepWidget, self).__init__(**kwargs)
+        self.name = ''
         self.drawing = True
         # self.toggle.text = self.name
+
+    # def __init__(self, kivy_image, kivy_drawing):
+        # self.function
+        self.texture = Texture.create(size = (10,10), colorfmt='bgr')
+        self.name = 'default name'
+        # self.kivy_image = kivy_image
+        # self.drawing = kivy_drawing
+
+    def recreate_texture(self, cv_image):
+        self.texture = Texture.create(size=(cv_image.shape[1], cv_image.shape[0]), colorfmt='bgr')
+        self.update_texture(cv_image) # called only if intended to draw
+
+    def recreate_widget(self, cv_image, name):
+        self.recreate_texture(cv_image)
+        self.name = name
+        print('Recreated widget:',name,'\nwith dimensions:',cv_image.shape)
+
+    def update_texture(self, im):
+        if self.drawing:
+            self.update_texture_from_rgb(fh.colorify(im))
+
+    def update_texture_from_rgb(self,im_rgb):
+        buf1 = cv2.flip(im_rgb, 0)
+        buf = buf1.tostring()
+        self.texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
+        self.kivy_image.texture = self.texture
+
+
 
 class StepWidgetControl():
     def __init__(self, widget_layout, layout_steps_kivy):
@@ -61,7 +89,7 @@ class StepWidgetControl():
         if diff > 0: # create widgets
             for num in range(0, np.abs(diff)):
                 self.layout.add_widget(Image(size_hint_x = '0.1'))
-                self.kivy_layout.add_widget(KivyStepWidget('nameee'))
+                self.kivy_layout.add_widget(StepWidget())
                 # self.layout.add_widget(Label(size_hint_y = '0.1'))
                 # self.layout.add_widget(Button())
                 # self.layout.add_widget(ToggleButton(size_hint_x = '0.1'))
@@ -74,13 +102,13 @@ class StepWidgetControl():
                 print('removed widget')
         # self.kivy_images = [kivy_image for kivy_image in self.layout.children]
 
-        self.widgets.clear()
+        # self.widgets.clear()
         # [self.widgets.append(StepWidget(kivy_image,kivy_toggle.))
-        [self.widgets.append(StepWidget(kivy_image, True))
-         for kivy_image in self.layout.children]
+        # [self.widgets.append(StepWidget(kivy_image, True))
+        #  for kivy_image in self.layout.children]
 
         [widget.recreate_widget(np.uint8(im_item[1][0]), im_item[0])
-         for (widget, im_item) in zip(self.widgets, im_list)]
+         for (widget, im_item) in zip(self.kivy_layout.children, im_list)]
         # len_im_list = len(im_list)
         # diff = len_im_list - len(self.step_widgets)
         # if diff > 0: # create widgets
@@ -105,7 +133,7 @@ class StepWidgetControl():
                 else:
                     # print('hej')
                     [widget.update_texture(np.uint8(im_item[1][0].copy()))
-                     for (im_item, widget) in zip(im_steps, self.widgets)]
+                     for (im_item, widget) in zip(im_steps, self.kivy_layout.children)]
                     #
                     # for (imItem, img_Child) in zip(im_steps, self.layout.children):
                     #     # print(imItem[0])
@@ -119,34 +147,6 @@ class StepWidgetControl():
                     #
                     #     img_Child.texture = convert_to_texture( im.copy() )
                     #     img_Child.texture
-
-
-class StepWidget():
-    def __init__(self, kivy_image, kivy_drawing):
-        # self.function
-        self.texture = Texture.create(size = (10,10), colorfmt='bgr')
-        self.name = 'default name'
-        self.kivy_image = kivy_image
-        self.drawing = kivy_drawing
-
-    def recreate_texture(self, cv_image):
-        self.texture = Texture.create(size=(cv_image.shape[1], cv_image.shape[0]), colorfmt='bgr')
-        self.update_texture(cv_image) # called only if intended to draw
-
-    def recreate_widget(self, cv_image, name):
-        self.recreate_texture(cv_image)
-        self.name = name
-        print('Recreated widget:',name,'\nwith dimensions:',cv_image.shape)
-
-    def update_texture(self, im):
-        if self.drawing:
-            self.update_texture_from_rgb(fh.colorify(im))
-
-    def update_texture_from_rgb(self,im_rgb):
-        buf1 = cv2.flip(im_rgb, 0)
-        buf = buf1.tostring()
-        self.texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
-        self.kivy_image.texture = self.texture
 
 
 
