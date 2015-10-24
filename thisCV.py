@@ -186,7 +186,7 @@ def blurIt(im,a):
 #     a = 75
     return cv2.bilateralFilter(im,9,a,a)
 
-def floodIt(im,newVal):
+def flood_it(im,newVal):
     h, w = im.shape[:2]
     # mask = np.zeros((h + 2, w + 2), np.uint8)
     a = 2
@@ -198,26 +198,26 @@ def floodIt(im,newVal):
     # rect = 8
     cv2.floodFill(im, mask, seed, newVal, 0, 255, rect)
 
-def add_operation(operation_name, imList, im):
-    imList.append( [operation_name, [im] ] )
+def add_operation(operation_name, im_steps, im):
+    return im_steps.append( [operation_name, [im] ] )
 
 def stepCV(frame, cTag):
-    imList = []
+    im_steps = []
     a = 0.5
     im = cv2.resize(frame, (0, 0), fx=a, fy=a)
     # im = frame
-    # add_operation( 'resized', imList, im)
+    # add_operation( 'resized', im_steps, im)
     # ____________________________________________________
     # RGB -> gray
     gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
     im = gray
-    add_operation( 'gray', imList, im)
+    add_operation( 'gray', im_steps, im)
     # ____________________________________________________
     # adaptive image histogram equalization - create a CLAHE object (Arguments are optional).
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     cl1 = clahe.apply(im)
     im = cl1
-    add_operation( 'clahed', imList, im)
+    add_operation( 'clahed', im_steps, im)
     # ____________________________________________________
     # gaussian blur
     # blur = gaussIt(im,7)
@@ -227,26 +227,26 @@ def stepCV(frame, cTag):
     # ____________________________________________________
     # Threshing - to get binary image out of gray one
     im = inverte(im.copy())
-    add_operation( 'inverted', imList, im)
+    add_operation( 'inverted', im_steps, im)
     thresh = threshIT(im, 'otsu')
     im = thresh
-    add_operation( 'thresholded', imList, im)
+    add_operation( 'thresholded', im_steps, im)
     im = inverte(im.copy())
-    add_operation( 'inverted again', imList, im)
+    add_operation( 'inverted again', im_steps, im)
     # ____________________________________________________
     # inversion
     # im = inverte(im.copy())
     # ____________________________________________________
     # imclearborder - maskes out all contours which are touching the border
-    killerBorder = 5
-    killedBorder= imclearborder(im, killerBorder)
-    im = killedBorder;
-    add_operation( 'killed border', imList, im)
+    killer_border_width = 5
+    killed_border = imclearborder(im, killer_border_width)
+    im = killed_border;
+    add_operation( 'killed border', im_steps, im)
     a = 1
-    killedBorder = cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
+    killed_border = cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
 
-    im = killedBorder
-    add_operation( 'blacked border', imList, im)
+    im = killed_border
+    add_operation( 'blacked border', im_steps, im)
     # ____________________________________________________
     # bwareaopen
     # delete too small groups of pixels - with contours - slow
@@ -258,15 +258,15 @@ def stepCV(frame, cTag):
     # imfill
     # flood
     flooded = im.copy()
-    floodIt(flooded, 255)
+    flood_it(flooded, 255)
     im = flooded
-    add_operation( 'flooded with white', imList, im)
-    floodIt(flooded, 0)
+    add_operation( 'flooded with white', im_steps, im)
+    flood_it(flooded, 0)
     im = flooded
-    add_operation( 'flooded with black', imList, im)
+    add_operation( 'flooded with black', im_steps, im)
     # ____________________________________________________
-    # findTags and put them into imTags list
-    paired, imTags = findTags(im, cTag)
+    # findTags and put them into im_tags list
+    paired, im_tags = findTags(im, cTag)
 
     # ____________________________________________________
     # create progress image
@@ -275,10 +275,10 @@ def stepCV(frame, cTag):
     # ims.append( [cl1] )
     # # ims.append( [blur] )
     # ims.append( [thresh] )
-    # ims.append( [killedBorder] )
+    # ims.append( [killed_border] )
     # ims.append( [flooded] )
     # ims.append( [paired] )
-    #
+    # #
     # imWhole = fh.joinIm(ims, 1)
     # ____________________________________________________
     # FPS
@@ -289,9 +289,9 @@ def stepCV(frame, cTag):
     # cv2.putText(imWhole, text, hw , font, 1, 0, 5) # , cv2.LINE_AA )
     # cv2.putText(imWhole, text, hw, font, 1, col)
     # ____________________________________________________
-    # return imWhole, imTags
-    # return imList, imTags
-    return gray,imTags
+    # return imWhole, im_tags
+    return im_steps, im_tags
+    # return im_steps, im_tags
 
 def loopCV(cap):
     print("loopCV started")

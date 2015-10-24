@@ -13,8 +13,8 @@ import cv2
 # import cv2.cv as cv
 from PIL import Image, ImageTk
 import time
-# import tkinter as tk
-import Tkinter as tk
+import tkinter as tk
+# import Tkinter as tk % windows school py 2.7
 from thisCV import *
 
 import findHomeography as fh
@@ -91,7 +91,7 @@ def image_capture(queue, queTag):
     dontRecord = False
     cap = cv2.VideoCapture(videoId)
     loopingCV = 1
-    cTag = fh.readTag('2L')
+    cTag = fh.read_model_tag('2L')
     while loopingCV:
         if dontRecord == False:
             flag, frame = cap.read()
@@ -127,9 +127,9 @@ def setVideoCapture(sourceId):
     global cap
     dontRecord = True
     cap.release()
-    print 'Cap released'
+    print('Cap released')
     cap = cv2.VideoCapture(sourceId)
-    print 'Configured cv2.VideoCapture source ID to '+str(sourceId)
+    print('Configured cv2.VideoCapture source ID to '+str(sourceId))
     dontRecord = False
 
 

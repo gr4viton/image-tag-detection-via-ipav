@@ -1,9 +1,9 @@
 #:kivy 1.9
 <Multicopter>:
-    cols: 3
+#    cols: 1
     gl_left: gl_left
-    gl_middle: gl_middle
-    gl_right: gl_right
+#    gl_middle: gl_middle
+#    gl_right: gl_right
     img_webcam: img_webcam
     img_tags: img_tags
 #    txt_numFound: txt_numFound
@@ -11,10 +11,10 @@
     sla_steps: sla_steps
     img_steps: img_steps # temporal
     GridLayout:
-        size_hint_x: 1
+#        size_hint_x: 1
         cols:1
         id: gl_left
-        padding: 10
+#        padding: 10
 #        canvas.before:
 #            Color:
 #                rgba: 0, 1, 0, 1
@@ -26,18 +26,21 @@
         Button:
 #            text: 'Switch cameras'
             text: 'Toggle findtag algorythm'
-            size_hint: .1, .05
+            size_hint_y: .05
             on_press: root.findtag_control.toggle_findtagging()
             # pos_hint: {'center_x':.5, 'center_y': .5}
         Button:
             text: 'Toggle capturing'
-            size_hint: .1, .05
+            size_hint_y: .05
             on_press: root.capture_control.toggle_capturing();
         Button:
             text: 'Switch cameras'
-            size_hint: .1, .05
+            size_hint_y: .05
             on_press: root.capture_control.toggle_source_id();
             # pos_hint: {'center_x':.5, 'center_y': .5}
+        GridLayout:
+            cols: 1
+            size_hint_y: 0.1
         Image:
             id: img_webcam
         Image:
@@ -46,37 +49,50 @@
 #            orientation: 'tb-lr'
 #            size_hint: 2, 2
 #            id: sla_steps
+    Splitter:
+        id:spl
+        max_size: self.parent.width - 200
+#        Label:
+#            text:
+#                'splitter.width: {}\nparent.width: {}\nmax_size: {}'\
+#                .format(spl.width, root.width, spl.max_size)
         GridLayout:
             cols: 1
-            size_hint: 2, 2
+#            size_hint_x: 1
+            orientation: 'vertical'
+#            id: gl_middle
             id: sla_steps
-    BoxLayout:
-        size_hint_x: 1
-        orientation: 'vertical'
-        id: gl_middle
-        padding: 10
-        Label:
-            text: "Number of found tags in image"
-            size_hint: 1, 0.1
-        Label:
-#            id: txt_numFound
-#            text: root.str_num_found
-            size_hint: 1, 0.1
-        StackLayout:
-            id: sla_tags
-        Image:
-            id: img_tags
-#        Button:
-#            text: 'Save the matrix??'
+            padding: 10
 
-    GridLayout:
-        size_hint_x: 0.5
-        cols:1
-        id: gl_right
-        padding: 10
-        Button:
-            text: 'Save the matrix??'
-#
-#        Button:
-#            text: 'Exit'
-#            on_press: Exit()
+            Label:
+                text: "Number of found tags in image"
+                size_hint_y: 0.1
+            Label:
+    #            id: txt_numFound
+    #            text: root.str_num_found
+                size_hint_y: 0.1
+            Label:
+                text: "findtag mean time [ms]"
+                size_hint_y: 0.1
+            Label:
+    #            text: root.findtag_control.mean_exec_time
+            StackLayout:
+                id: sla_tags
+            Image:
+                id: img_tags
+    #        Button:
+    #            text: 'Save the matrix??'
+
+#        Splitter:
+#            vertical: 0
+#            GridLayout:
+#                size_hint_x: 0.5
+#                cols:1
+#                id: gl_right
+#                padding: 10
+#                Button:
+#                    text: 'Save the matrix??'
+        #
+        #        Button:
+        #            text: 'Exit'
+        #            on_press: Exit()

@@ -2,6 +2,8 @@ import timeit
 import time
 import threading
 
+from multiprocessing import Queue
+
 import cv2
 import numpy as np
 
@@ -54,7 +56,7 @@ class LockedNumpyArray(object):
     def __set__(self, obj, val):
         self.lock.acquire()
         # print('setting', val)
-        self.val = val.copy() # ????????????????????????????????????????? do i need it?
+        self.val = val.copy() # ????????????????????????????????????????? do i need a copy??
         self.lock.release()
 
 class FindtagControl():
@@ -65,53 +67,19 @@ class FindtagControl():
     im_steps = LockedNumpyArray()
     im_tags = LockedNumpyArray()
     findtagging = LockedValue(False)
-    cTag = LockedValue()
+    model_tag = LockedValue()
+    # exec_times = LockedValue([])
+    mean_exec_time = LockedValue(0)
 
     def __init__(self, capture_control):
-
-
         self.capture_control = capture_control
-        # self.capture_lock = threading.Lock()
-        # self.capture = None
-        # self.source_id = 0
-
         self.init_findtag()
-
-        self.sleepTime = 0.0
+        self.exec_times_max_len = 50
+        self.exec_times = []
 
     def init_findtag(self):
-        # load cTag
-        self.cTag = fh.readTag('2L')
-        pass
-    #     self.capture_lock.acquire()
-    #     self.capture = cv2.VideoCapture()
-    #     self.capture_lock.release()
-    #
-    # def open_source_id(self, new_source_id):
-    #     self.capture_lock.acquire()
-    #     self.source_id = new_source_id
-    #     self.capture_lock.release()
-    #     self.open_source_id()
-    #
-    # def open_capture(self):
-    #     self.capture_lock.acquire()
-    #     self.capture.open(self.source_id)
-    #     if self.capture.isOpened() != True:
-    #         raise('Cannot open capture source_id ', self.source_id)
-    #     print('Opened capture source_id ' + str(self.source_id))
-    #     self.capture_lock.release()
-    #
-    # def toggle_source_id(self):
-    #     self.capture_lock.acquire()
-    #     self.source_id = np.mod(self.source_id+1, 2)
-    #     self.capture_lock.release()
-    #     self.open_capture()
-    #
-    # def close_capture(self):
-    #     self.capture_lock.acquire()
-    #     self.capture.release()
-    #     self.capture_lock.release()
-    #
+        self.model_tag = fh.read_model_tag('2L')
+
     def start_findtagging(self):
         self.findtagging = True
         self.thread = threading.Thread(target=self.findtag_loop)
@@ -126,60 +94,37 @@ class FindtagControl():
     def on_stop(self):
         self.findtagging = False
 
+    def add_exec_times(self, tim):
+        if len(self.exec_times) > self.exec_times_max_len:
+            self.exec_times.pop(0)
+            self.add_exec_times(tim)
+        else:
+            self.exec_times.append(tim)
+        self.mean_exec_time = np.sum(self.exec_times) / len(self.exec_times)
+
     def findtag_loop(self):
         while self.findtagging:
             self.findtag()
 
     def findtag(self):
-
-        # start = timeit.timeit()
-        imGray, imTags = stepCV(self.capture_control.frame, self.cTag)
-        # imList, imTags = stepCV(self.capture_control.frame, self.cTag)
-        # end = timeit.timeit()
+        start = timeit.timeit()
+        im_steps, im_tags = stepCV(self.capture_control.frame, self.model_tag)
+        end = timeit.timeit()
+        self.add_exec_times(end-start)
         # print(end - start)
-
-
-        # self.capture_lock.acquire()
-        # if self.capture.isOpened() != True:
-        #     # self.open_capture()
-        #     raise('Cannot read frame as the capture is not opened')
-        # else:
-        #     ret, frame = self.capture.read()
-        # self.capture_lock.release()
-        # self.frame = frame
-        # # print(self.frame.shape)
+        # print(im_gray.shape)
+        self.im_steps = im_steps
+        self.im_tags = im_tags
 
         # here raise an event for the conversion and redrawing to happen
+        time.sleep(0.0001)
 
 
-    def update_findtag_gui(self,frame, cTag, running_findtag):
+    def update_findtag_gui(self,frame, tag_model, running_findtag):
 
         while True:
             if running_findtag:
-
-                imGray, imTags = stepCV(frame, cTag)
-                # time.sleep(1)
-
-                # self.root.img_webcam.texture = self.convert_to_texture(frame)
-                # imList = imList.copy()
-                # self.root.update_sla_steps(imList)
-
-
-                # if len(self.root.sla_steps.children) == 0:
-                #     self.root.sla_steps.add_widget(Image())
-                # self.root.sla_steps.children[0].texture = convert_to_texture(imGray)
-
-                # if imTags is not None:
-                #     # self.root.txt_numFound.text = str(len(imTags))
-                #     if len(imTags) > 0:
-                #         imAllTags = fh.joinIm( [[im] for im in imTags], 1 )
-                #         # update_image(image_label, imAllTags)
-                #         if len(imAllTags.shape) == 2:
-                #             imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)
-                #         print(imAllTags)
-                #         print(imAllTags.shape)
-                #         self.root.img_tags.texture = self.convert_to_texture( imAllTags.copy() )
-
+                self.findtag()
 
 class CaptureControl():
     """
@@ -219,9 +164,24 @@ class CaptureControl():
 
     def toggle_source_id(self):
         self.capture_lock.acquire()
-        self.source_id = np.mod(self.source_id+1, 2)
+        #self.source_id = np.mod(self.source_id+1, 2)
+        # self.open_capture()
+        try_next = True
+        while try_next:
+            self.source_id += 1
+            self.capture.open(self.source_id)
+            if self.capture.isOpened() != True:
+                print('Cannot open capture source_id ', self.source_id)
+                self.source_id = -1
+                continue
+            ret, frame = self.capture.read()
+            if ret == False:
+                print('Source cannot be read from, source_id ', self.source_id)
+                self.source_id = -1
+                continue
+            print('Opened capture source_id ' + str(self.source_id))
+            try_next = False
         self.capture_lock.release()
-        self.open_capture()
 
     def close_capture(self):
         self.capture_lock.acquire()

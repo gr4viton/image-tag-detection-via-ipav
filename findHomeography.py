@@ -317,7 +317,7 @@ def getBoxCorners(boxOffset, boxSide):
     pts = [[aS, aS], [aS, aB], [aB, aB], [aB, aS]]
     return np.float32(pts)
 
-def readTag(strTag):
+def read_model_tag(strTag):
     cTag = C_tagModel(strTag)
     return cTag
 
@@ -530,7 +530,7 @@ def matDot(A,B):
 if __name__ == '__main__':
 
     strTag = '2L'
-    cTagModel = readTag(strTag)
+    cTagModel = read_model_tag(strTag)
 
     imScene = readIm('space1', strTag)
 
