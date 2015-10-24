@@ -1,4 +1,7 @@
 #:kivy 1.9
+
+#<StepWidget>:
+
 <Multicopter>:
 #    cols: 1
     gl_left: gl_left
@@ -6,10 +9,12 @@
 #    gl_right: gl_right
     img_webcam: img_webcam
     img_tags: img_tags
-#    txt_numFound: txt_numFound
+    txt_numFound: txt_numFound
     sla_tags: sla_tags
-    sla_steps: sla_steps
-    img_steps: img_steps # temporal
+    layout_steps: layout_steps
+#    img_steps: img_steps # temporal
+
+
     GridLayout:
 #        size_hint_x: 1
         cols:1
@@ -43,8 +48,8 @@
             size_hint_y: 0.1
         Image:
             id: img_webcam
-        Image:
-            id: img_steps # temporal
+#        Image:
+#            id: img_steps # temporal
 #        StackLayout:
 #            orientation: 'tb-lr'
 #            size_hint: 2, 2
@@ -63,12 +68,22 @@
 #            id: gl_middle
             id: sla_steps
             padding: 10
-
+#            ScrollView:
+#                size: root.size
+    #            do_scroll: 1
+            StackLayout:
+    #                cols: 1
+#                size: root.size
+#                width: 400
+                orientation: 'lr-tb'
+#                size_hint: 0.1, 0.4
+#                width: root.width
+                id: layout_steps
             Label:
                 text: "Number of found tags in image"
                 size_hint_y: 0.1
             Label:
-    #            id: txt_numFound
+                id: txt_numFound
     #            text: root.str_num_found
                 size_hint_y: 0.1
             Label:
