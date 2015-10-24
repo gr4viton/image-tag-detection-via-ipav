@@ -36,11 +36,23 @@ def convert_rgb_to_texture(im_rgb):
     texture1.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
     return texture1
 
+class KivyStepWidget(GridLayout):
+    # toggle_object = ObjectProperty()
+    name = StringProperty()
+    drawing = ObjectProperty()
+    kivy_image = ObjectProperty()
+
+    def __init__(self, name, **kwargs):
+        super(KivyStepWidget, self).__init__(**kwargs)
+        self.name = name
+        self.drawing = True
+        # self.toggle.text = self.name
+
 class StepWidgetControl():
-    def __init__(self, widget_layout):
+    def __init__(self, widget_layout, layout_steps_kivy):
         self.widgets = []
         self.layout = widget_layout
-
+        self.kivy_layout = layout_steps_kivy
 
     # def
 
@@ -49,6 +61,7 @@ class StepWidgetControl():
         if diff > 0: # create widgets
             for num in range(0, np.abs(diff)):
                 self.layout.add_widget(Image(size_hint_x = '0.1'))
+                self.kivy_layout.add_widget(KivyStepWidget('nameee'))
                 # self.layout.add_widget(Label(size_hint_y = '0.1'))
                 # self.layout.add_widget(Button())
                 # self.layout.add_widget(ToggleButton(size_hint_x = '0.1'))
@@ -57,6 +70,7 @@ class StepWidgetControl():
         else:
             for num in range(0, np.abs(diff)):
                 self.layout.remove_widget( self.layout.children[-1])
+                self.kivy_layout.remove_widget( self.kivy_layout.children[-1])
                 print('removed widget')
         # self.kivy_images = [kivy_image for kivy_image in self.layout.children]
 
@@ -146,6 +160,7 @@ class Multicopter(BoxLayout):
     # str_num_found = StringProperty()
     sla_tags = ObjectProperty()
     layout_steps = ObjectProperty()
+    layout_steps_kivy = ObjectProperty()
     # img_steps = ObjectProperty()
 
     def __init__(self, capture_control, findtag_control, **kwargs):
@@ -154,7 +169,7 @@ class Multicopter(BoxLayout):
         self.capture_control = capture_control
         self.findtag_control = findtag_control
 
-        self.step_widgets_control = StepWidgetControl(self.layout_steps)
+        self.step_widgets_control = StepWidgetControl(self.layout_steps, self.layout_steps_kivy)
 
 class multicopterApp(App):
     frame = []

@@ -1,9 +1,5 @@
 #:kivy 1.9
 
-<KivyStepWidget>:
-    name: name
-    Label:
-        id: name
 
 <Multicopter>:
 #    cols: 1
@@ -15,6 +11,7 @@
     txt_numFound: txt_numFound
     sla_tags: sla_tags
     layout_steps: layout_steps
+    layout_steps_kivy: layout_steps_kivy
 #    img_steps: img_steps # temporal
 
 
@@ -75,13 +72,12 @@
 #                size: root.size
     #            do_scroll: 1
             StackLayout:
-    #                cols: 1
-#                size: root.size
-#                width: 400
                 orientation: 'lr-tb'
-#                size_hint: 0.1, 0.4
-#                width: root.width
                 id: layout_steps
+
+            StackLayout:
+                orientation: 'lr-tb'
+                id: layout_steps_kivy
             Label:
                 text: "Number of found tags in image"
                 size_hint_y: 0.1
@@ -114,3 +110,19 @@
         #        Button:
         #            text: 'Exit'
         #            on_press: Exit()
+
+<KivyStepWidget>:
+#    toggle_object: toggle
+    kivy_image: kivy_image
+    cols: 1
+    ToggleButton:
+#        id: toggle
+        text: root.name
+        size_hint_y: 0.1
+#        state: root.drawing
+        on_press: root.drawing = (self.state == 'down')
+    Image:
+        id: kivy_image
+
+#    GridLayout
+#        cols: 1
