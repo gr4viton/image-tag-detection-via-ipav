@@ -36,20 +36,104 @@ def convert_rgb_to_texture(im_rgb):
     texture1.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
     return texture1
 
+class StepWidgetControl():
+    def __init__(self, widget_layout):
+        self.widgets = []
+        self.layout = widget_layout
+
+
+    # def
+
+    def layout_steps_add_widgets(self,im_list):
+        diff = len(im_list) - len(self.layout.children)
+        if diff > 0: # create widgets
+            for num in range(0, np.abs(diff)):
+                self.layout.add_widget(Image(size_hint_x = '0.1'))
+                # self.layout.add_widget(Label(size_hint_y = '0.1'))
+                # self.layout.add_widget(Button())
+                # self.layout.add_widget(ToggleButton(size_hint_x = '0.1'))
+                # kivy_toggle.
+                print('added widget')
+        else:
+            for num in range(0, np.abs(diff)):
+                self.layout.remove_widget( self.layout.children[-1])
+                print('removed widget')
+        # self.kivy_images = [kivy_image for kivy_image in self.layout.children]
+
+        self.widgets.clear()
+        # [self.widgets.append(StepWidget(kivy_image,kivy_toggle.))
+        [self.widgets.append(StepWidget(kivy_image, True))
+         for kivy_image in self.layout.children]
+
+        [widget.recreate_widget(np.uint8(im_item[1][0]), im_item[0])
+         for (widget, im_item) in zip(self.widgets, im_list)]
+        # len_im_list = len(im_list)
+        # diff = len_im_list - len(self.step_widgets)
+        # if diff > 0: # create widgets
+        #     for num in range(0, np.abs(diff)):
+        #
+        #         im = np.uint8(  (im_list[len_im_list - diff+num-1])[1] )
+        #         print(len(im))
+        #         self.step_widgets.append(StepWidget(im))
+        #         print('added widget')
+        # else:
+        #     for num in range(0, np.abs(diff)):
+        #         self.step_widgets.pop(-1)
+        #         print('removed widget')
+
+    def update_layout_steps(self,im_steps):
+
+        if im_steps is not None:
+            # im_steps = [im_steps[1],im_steps[1]]
+            if len(im_steps) > 0:
+                if len(im_steps) != len(self.layout.children):
+                    self.layout_steps_add_widgets(im_steps)
+                else:
+                    # print('hej')
+                    [widget.update_texture(np.uint8(im_item[1][0].copy()))
+                     for (im_item, widget) in zip(im_steps, self.widgets)]
+                    #
+                    # for (imItem, img_Child) in zip(im_steps, self.layout.children):
+                    #     # print(imItem[0])
+                    #     imName = imItem[0]
+                    #     # imName = imItem[0][0]
+                    #     im = np.uint8( imItem[1][0] )
+                    #     img_Child.text = imName
+                    #
+                    #     # step_widget.update_texture(im[0])
+                    #     # img_Child.texture = step_widget.texture
+                    #
+                    #     img_Child.texture = convert_to_texture( im.copy() )
+                    #     img_Child.texture
+
+
 class StepWidget():
-    def __init__(self, im):
+    def __init__(self, kivy_image, kivy_drawing):
         # self.function
-        self.texture = Texture.create(size=(im.shape[1], im.shape[0]), colorfmt='bgr')
-        self.update_texture(im) # called only if intended to draw
+        self.texture = Texture.create(size = (10,10), colorfmt='bgr')
+        self.name = 'default name'
+        self.kivy_image = kivy_image
+        self.drawing = kivy_drawing
 
+    def recreate_texture(self, cv_image):
+        self.texture = Texture.create(size=(cv_image.shape[1], cv_image.shape[0]), colorfmt='bgr')
+        self.update_texture(cv_image) # called only if intended to draw
 
-    def update_texture(self,im):
-        return convert_rgb_to_texture(fh.colorify(im))
+    def recreate_widget(self, cv_image, name):
+        self.recreate_texture(cv_image)
+        self.name = name
+        print('Recreated widget:',name,'\nwith dimensions:',cv_image.shape)
+
+    def update_texture(self, im):
+        if self.drawing:
+            self.update_texture_from_rgb(fh.colorify(im))
 
     def update_texture_from_rgb(self,im_rgb):
         buf1 = cv2.flip(im_rgb, 0)
         buf = buf1.tostring()
         self.texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
+        self.kivy_image.texture = self.texture
+
 
 
 class Multicopter(BoxLayout):
@@ -70,90 +154,7 @@ class Multicopter(BoxLayout):
         self.capture_control = capture_control
         self.findtag_control = findtag_control
 
-        self.step_widgets = []
-
-    def layout_steps_add_widgets(self,im_list):
-        diff = len(im_list) - len(self.layout_steps.children)
-        if diff > 0: # create widgets
-            for num in range(0, np.abs(diff)):
-                self.layout_steps.add_widget(Image(size_hint_x = '0.1'))
-                # self.layout_steps.add_widget(Label(size_hint_y = '0.1'))
-                # self.layout_steps.add_widget(Button())
-                # self.layout_steps.add_widget(ToggleButton(size_hint_x = '0.1'))
-                print('added widget')
-        else:
-            for num in range(0, np.abs(diff)):
-                self.layout_steps.remove_widget( self.layout_steps.children[-1])
-                print('removed widget')
-
-        # len_im_list = len(im_list)
-        # diff = len_im_list - len(self.step_widgets)
-        # if diff > 0: # create widgets
-        #     for num in range(0, np.abs(diff)):
-        #
-        #         im = np.uint8(  (im_list[len_im_list - diff+num-1])[1] )
-        #         print(len(im))
-        #         self.step_widgets.append(StepWidget(im))
-        #         print('added widget')
-        # else:
-        #     for num in range(0, np.abs(diff)):
-        #         self.step_widgets.pop(-1)
-        #         print('removed widget')
-
-    def update_layout_steps(self,im_steps):
-
-        if im_steps is not None:
-            # im_steps = [im_steps[1],im_steps[1]]
-            if len(im_steps) > 0:
-                if len(im_steps) != len(self.layout_steps.children):
-                    self.layout_steps_add_widgets(im_steps)
-                else:
-                    # print(len(self.layout_steps.children), ' = ', len(im_steps))
-                    # for img_Child in self.layout_steps.children:
-
-                    # for (imItem, img_Child, step_widget) in \
-                    #         zip(im_steps, self.layout_steps.children, self.step_widgets):
-                    for (imItem, img_Child) in zip(im_steps, self.layout_steps.children):
-                        # print(imItem[0])
-                        imName = imItem[0]
-                        # imName = imItem[0][0]
-                        im = np.uint8( imItem[1][0] )
-                        img_Child.text = imName
-
-                        # step_widget.update_texture(im[0])
-                        # img_Child.texture = step_widget.texture
-
-                        img_Child.texture = convert_to_texture( im.copy() )
-                        img_Child.texture
-                        # break
-
-            # imWhole = []
-            # k = 1
-            # for imItem in im_steps:
-            #     if imWhole == []:
-            #         imWhole = imItem[1]
-            #     else:
-            #         print(k)
-            #         # [ imWhole.append(im)]
-            #         # imWhole = fh.joinIm([ [imWhole], [imItem[1]] ],1)
-
-
-            # if len(imWhole.shape) == 2:
-            #     imWhole = cv2.cvtColor(imWhole, cv2.COLOR_GRAY2RGB)
-            # for imItem in im_steps:
-            #     str_name = imItem[0]
-            #
-            #     imEnclosed = imItem[1]
-            #     im = imEnclosed[0]
-            #
-            #     imColor = fh.colorify(im[0])
-            #     im = im.copy()
-            #     # print(str_name)
-            #     # print(im.shape)
-            #     break
-
-            # self.root.img_webcam.texture = self.convert_to_texture(imColor)
-
+        self.step_widgets_control = StepWidgetControl(self.layout_steps)
 
 class multicopterApp(App):
     frame = []
@@ -206,13 +207,14 @@ class multicopterApp(App):
         #     self.root.img_steps.texture = convert_to_texture(im_steps)
 
         im_steps = self.findtag_control.im_steps
-        self.root.update_layout_steps(im_steps)
+        self.root.step_widgets_control.update_layout_steps(im_steps)
+        # self.root.update_layout_steps(im_steps)
 
         imTags = self.findtag_control.im_tags
 
-        # if len(self.root.layout_steps.children) == 0:
-        #     self.root.layout_steps.add_widget(Image())
-        # self.root.layout_steps.children[0].texture = convert_to_texture(imGray)
+        # if len(self.root.layout.children) == 0:
+        #     self.root.layout.add_widget(Image())
+        # self.root.layout.children[0].texture = convert_to_texture(imGray)
 
         if imTags is not None:
             self.root.txt_numFound.text = str(len(imTags))
@@ -222,8 +224,8 @@ class multicopterApp(App):
                 # update_image(image_label, imAllTags)
                 if len(imAllTags.shape) == 2:
                     imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)
-                print(imAllTags)
-                print(imAllTags.shape)
+                # print(imAllTags)
+                # print(imAllTags.shape)
                 self.root.img_tags.texture = convert_to_texture( imAllTags.copy() )
 
 
