@@ -531,7 +531,7 @@ if __name__ == '__main__':
     cSeenTag = C_observedTag(imScene.copy())
     success = cSeenTag.findWarpMatrix(cTagModel)
     if not success:
-        print('Tag from scene could not be transformed!')
+        print 'Tag from scene could not be transformed!'
         exit
 
     imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)

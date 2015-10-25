@@ -14,7 +14,7 @@ import cv2
 from PIL import Image, ImageTk
 import time
 # import tkinter as tk
-import tkinter as tk
+import Tkinter as tk
 from thisCV import *
 
 import findHomeography as fh
