@@ -1,0 +1,49 @@
+#:kivy 1.9
+<Multicopter>:
+    cols: 3
+    gl_left: gl_left
+    gl_middle: gl_middle
+    gl_right: gl_right
+    img_webcam: img_webcam
+    img_tags: img_tags
+    txt_numFound: txt_numFound
+    GridLayout:
+        cols:1
+        id: gl_left
+        padding: 10
+#        canvas.before:
+#            Color:
+#                rgba: 0, 1, 0, 1
+#            Rectangle:
+#                # self here refers to the widget i.e FloatLayout
+#                pos: self.pos
+#                size: self.size
+        Button:
+            text: 'Switch cameras'
+            size_hint: .1, .05
+            on_press: root.toggle_source_id();
+            # pos_hint: {'center_x':.5, 'center_y': .5}
+        Image:
+            id: img_webcam
+    BoxLayout:
+        orientation: 'vertical'
+        id: gl_middle
+        padding: 10
+        Label:
+            text: "Number of found tags in image"
+            size_hint: 1, 0.1
+        Label:
+            id: txt_numFound
+            text: '0'
+            size_hint: 1, 0.1
+        Image:
+            id: img_tags
+#        Button:
+#            text: 'Save the matrix??'
+
+    GridLayout:
+        cols:1
+        id: gl_right
+        padding: 10
+        Button:
+            text: 'Save the matrix??'

@@ -76,6 +76,13 @@ class C_observedTag:
 
             squareMeans = cTagModel.getSquareMeans(imSymbolSubAreas)
             # print squareMeans
+        # a = [1, 2, 3, 4]
+        # b = [5,6,7,8]
+        # print zip(a,b)
+        # print(squareSums)
+        # print len(cTagModel.imSymbolSubAreas)
+        # print zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)
+        # waitKeyExit()
 
             self.rotation  = []
             for modelCode in cTagModel.rotatedModelCodes:
@@ -524,7 +531,7 @@ if __name__ == '__main__':
     cSeenTag = C_observedTag(imScene.copy())
     success = cSeenTag.findWarpMatrix(cTagModel)
     if not success:
-        print 'Tag from scene could not be transformed!'
+        print('Tag from scene could not be transformed!')
         exit
 
     imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)
