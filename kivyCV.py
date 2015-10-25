@@ -15,6 +15,7 @@ from kivy.uix.button import Button
 # from kivy.uix.checkbox import CheckBox
 from kivy.uix.togglebutton import ToggleButton
 from kivy.properties import ObjectProperty, StringProperty
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.config import Config
 
 import cv2
@@ -36,12 +37,21 @@ def convert_rgb_to_texture(im_rgb):
     texture1.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
     return texture1
 
+class ImageButton(ButtonBehavior, Image):
+
+    # def __init__(self, toggle_drawing, **kwargs):
+        # super(Image, self).__init__(**kwargs)
+        # super(ButtonBehavior, self).__init__(**kwargs)
+        # self.toggle_drawing = toggle_drawing
+    pass
+
 class StepWidget(GridLayout):
 
     name = StringProperty()
-    drawing = ObjectProperty()
-    kivy_image = ObjectProperty()
+    drawing = ObjectProperty('down')
+    # kivy_image = ObjectProperty()
     toggle_object = ObjectProperty()
+
 
     def __init__(self, **kwargs):
         super(StepWidget, self).__init__(**kwargs)
@@ -49,6 +59,9 @@ class StepWidget(GridLayout):
         self.drawing = True
         self.texture = Texture.create(size = (10,10), colorfmt='bgr')
         self.name = 'default name'
+        # self.kivy_image = ImageButton(self.toggle_drawing)
+        self.kivy_image = ImageButton()
+        self.add_widget(self.kivy_image)
 
     def recreate_texture(self, cv_image):
         self.texture = Texture.create(
@@ -71,24 +84,29 @@ class StepWidget(GridLayout):
         self.kivy_image.texture = self.texture
 
     def set_drawing(self, value):
-        print(value)
+        # print(value)
         if value == True:
             self.toggle_object.state = 'down'
         if value == False:
             self.toggle_object.state = 'normal'
 
+    def toggle_drawing(self):
+        if self.toggle_object.state == 'down':
+            self.set_drawing(False)
+        else:
+            self.set_drawing(True)
+
 
 class StepWidgetControl():
 
     def __init__(self, layout_steps):
-        self.widgets = []
         self.layout_steps = layout_steps
 
     def show(self, command):
         if command == 'all':
-            [widget.set_drawing(True) for widget in self.widgets]
+            [widget.set_drawing(True) for widget in self.layout_steps.children]
         elif command == 'none':
-            [widget.set_drawing(False) for widget in self.widgets]
+            [widget.set_drawing(False) for widget in self.layout_steps.children]
 
     def layout_steps_add_widgets(self,im_list):
         diff = len(im_list) - len(self.layout_steps.children)

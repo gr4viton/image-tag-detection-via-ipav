@@ -108,9 +108,18 @@
         #            text: 'Exit'
         #            on_press: Exit()
 
+<ImageButton>:
+#    id: kivy_image
+    size_hint_y: 0.9
+#    background_normal: 'True'
+#    on_touch_down: root.drawing = (toggle.state == 'down')
+#    on_press: print('jasd')
+    #self.toggle_drawing()
+#    root.drawing = (toggle_object.state == 'down')
+
 <StepWidget>:
     toggle_object: toggle
-    kivy_image: kivy_image
+#    kivy_image: kivy_image
     size_hint_x: '1'
     cols: 1
     ToggleButton:
@@ -119,10 +128,9 @@
         size_hint_y: 0.1
 #        state: root.drawing
         state: 'down'
-        on_press: root.drawing = (self.state == 'down')
-    Image:
-        id: kivy_image
-        size_hint_y: 0.9
+#        on_press: root.drawing = (self.state == 'down')
+        on_state: root.drawing = (self.state == 'down')
+
 
 #    GridLayout
 #        cols: 1
