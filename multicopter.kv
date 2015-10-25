@@ -11,7 +11,6 @@
     txt_numFound: txt_numFound
     sla_tags: sla_tags
     layout_steps: layout_steps
-    layout_steps_kivy: layout_steps_kivy
 #    img_steps: img_steps # temporal
 
 
@@ -48,14 +47,8 @@
             size_hint_y: 0.1
         Image:
             id: img_webcam
-#        Image:
-#            id: img_steps # temporal
-#        StackLayout:
-#            orientation: 'tb-lr'
-#            size_hint: 2, 2
-#            id: sla_steps
     Splitter:
-        id:spl
+#        id: spl
         max_size: self.parent.width - 200
 #        Label:
 #            text:
@@ -73,11 +66,9 @@
     #            do_scroll: 1
             StackLayout:
                 orientation: 'lr-tb'
+
                 id: layout_steps
 
-            StackLayout:
-                orientation: 'lr-tb'
-                id: layout_steps_kivy
             Label:
                 text: "Number of found tags in image"
                 size_hint_y: 0.1
@@ -92,6 +83,12 @@
     #            text: root.findtag_control.mean_exec_time
             StackLayout:
                 id: sla_tags
+            Button:
+                text: "Hide all"
+                on_press: root.step_widgets_control.show('none')
+            Button:
+                text: "Show all"
+                on_press: root.step_widgets_control.show('all')
             Image:
                 id: img_tags
     #        Button:
@@ -112,18 +109,20 @@
         #            on_press: Exit()
 
 <StepWidget>:
-#    toggle_object: toggle
+    toggle_object: toggle
     kivy_image: kivy_image
-    size_hint_x: '0.1'
+    size_hint_x: '1'
     cols: 1
     ToggleButton:
-#        id: toggle
+        id: toggle
         text: root.name
         size_hint_y: 0.1
 #        state: root.drawing
+        state: 'down'
         on_press: root.drawing = (self.state == 'down')
     Image:
         id: kivy_image
+        size_hint_y: 0.9
 
 #    GridLayout
 #        cols: 1

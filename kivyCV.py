@@ -37,27 +37,23 @@ def convert_rgb_to_texture(im_rgb):
     return texture1
 
 class StepWidget(GridLayout):
+
     name = StringProperty()
     drawing = ObjectProperty()
     kivy_image = ObjectProperty()
+    toggle_object = ObjectProperty()
 
-    # def __init__(self, name, **kwargs):
     def __init__(self, **kwargs):
         super(StepWidget, self).__init__(**kwargs)
         self.name = ''
         self.drawing = True
-        # self.toggle.text = self.name
-
-    # def __init__(self, kivy_image, kivy_drawing):
-        # self.function
         self.texture = Texture.create(size = (10,10), colorfmt='bgr')
         self.name = 'default name'
-        # self.kivy_image = kivy_image
-        # self.drawing = kivy_drawing
 
     def recreate_texture(self, cv_image):
-        self.texture = Texture.create(size=(cv_image.shape[1], cv_image.shape[0]), colorfmt='bgr')
-        self.update_texture(cv_image) # called only if intended to draw
+        self.texture = Texture.create(
+            size=(cv_image.shape[1], cv_image.shape[0]), colorfmt='bgr')
+        self.update_texture(cv_image)
 
     def recreate_widget(self, cv_image, name):
         self.recreate_texture(cv_image)
@@ -65,7 +61,7 @@ class StepWidget(GridLayout):
         print('Recreated widget:',name,'\nwith dimensions:',cv_image.shape)
 
     def update_texture(self, im):
-        if self.drawing:
+        if self.drawing: # called only if intended to draw
             self.update_texture_from_rgb(fh.colorify(im))
 
     def update_texture_from_rgb(self,im_rgb):
@@ -74,81 +70,51 @@ class StepWidget(GridLayout):
         self.texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
         self.kivy_image.texture = self.texture
 
+    def set_drawing(self, value):
+        print(value)
+        if value == True:
+            self.toggle_object.state = 'down'
+        if value == False:
+            self.toggle_object.state = 'normal'
 
 
 class StepWidgetControl():
-    def __init__(self, widget_layout, layout_steps_kivy):
-        self.widgets = []
-        self.layout = widget_layout
-        self.kivy_layout = layout_steps_kivy
 
-    # def
+    def __init__(self, layout_steps):
+        self.widgets = []
+        self.layout_steps = layout_steps
+
+    def show(self, command):
+        if command == 'all':
+            [widget.set_drawing(True) for widget in self.widgets]
+        elif command == 'none':
+            [widget.set_drawing(False) for widget in self.widgets]
 
     def layout_steps_add_widgets(self,im_list):
-        diff = len(im_list) - len(self.layout.children)
+        diff = len(im_list) - len(self.layout_steps.children)
         if diff > 0: # create widgets
             for num in range(0, np.abs(diff)):
-                self.layout.add_widget(Image(size_hint_x = '0.1'))
-                self.kivy_layout.add_widget(StepWidget())
-                # self.layout.add_widget(Label(size_hint_y = '0.1'))
-                # self.layout.add_widget(Button())
-                # self.layout.add_widget(ToggleButton(size_hint_x = '0.1'))
-                # kivy_toggle.
+                self.layout_steps.add_widget(StepWidget())
                 print('added widget')
         else:
             for num in range(0, np.abs(diff)):
-                self.layout.remove_widget( self.layout.children[-1])
-                self.kivy_layout.remove_widget( self.kivy_layout.children[-1])
+                self.layout_steps.remove_widget( self.layout_steps.children[-1])
                 print('removed widget')
-        # self.kivy_images = [kivy_image for kivy_image in self.layout.children]
-
-        # self.widgets.clear()
-        # [self.widgets.append(StepWidget(kivy_image,kivy_toggle.))
-        # [self.widgets.append(StepWidget(kivy_image, True))
-        #  for kivy_image in self.layout.children]
 
         [widget.recreate_widget(np.uint8(im_item[1][0]), im_item[0])
-         for (widget, im_item) in zip(self.kivy_layout.children, im_list)]
-        # len_im_list = len(im_list)
-        # diff = len_im_list - len(self.step_widgets)
-        # if diff > 0: # create widgets
-        #     for num in range(0, np.abs(diff)):
-        #
-        #         im = np.uint8(  (im_list[len_im_list - diff+num-1])[1] )
-        #         print(len(im))
-        #         self.step_widgets.append(StepWidget(im))
-        #         print('added widget')
-        # else:
-        #     for num in range(0, np.abs(diff)):
-        #         self.step_widgets.pop(-1)
-        #         print('removed widget')
+         for (widget, im_item) in zip(self.layout_steps.children, im_list)]
 
     def update_layout_steps(self,im_steps):
 
         if im_steps is not None:
             # im_steps = [im_steps[1],im_steps[1]]
             if len(im_steps) > 0:
-                if len(im_steps) != len(self.layout.children):
+                if len(im_steps) != len(self.layout_steps.children):
                     self.layout_steps_add_widgets(im_steps)
                 else:
                     # print('hej')
                     [widget.update_texture(np.uint8(im_item[1][0].copy()))
-                     for (im_item, widget) in zip(im_steps, self.kivy_layout.children)]
-                    #
-                    # for (imItem, img_Child) in zip(im_steps, self.layout.children):
-                    #     # print(imItem[0])
-                    #     imName = imItem[0]
-                    #     # imName = imItem[0][0]
-                    #     im = np.uint8( imItem[1][0] )
-                    #     img_Child.text = imName
-                    #
-                    #     # step_widget.update_texture(im[0])
-                    #     # img_Child.texture = step_widget.texture
-                    #
-                    #     img_Child.texture = convert_to_texture( im.copy() )
-                    #     img_Child.texture
-
-
+                     for (im_item, widget) in zip(im_steps, self.layout_steps.children)]
 
 class Multicopter(BoxLayout):
     gl_left = ObjectProperty()
@@ -160,7 +126,6 @@ class Multicopter(BoxLayout):
     # str_num_found = StringProperty()
     sla_tags = ObjectProperty()
     layout_steps = ObjectProperty()
-    layout_steps_kivy = ObjectProperty()
     # img_steps = ObjectProperty()
 
     def __init__(self, capture_control, findtag_control, **kwargs):
@@ -169,7 +134,7 @@ class Multicopter(BoxLayout):
         self.capture_control = capture_control
         self.findtag_control = findtag_control
 
-        self.step_widgets_control = StepWidgetControl(self.layout_steps, self.layout_steps_kivy)
+        self.step_widgets_control = StepWidgetControl(self.layout_steps)
 
 class multicopterApp(App):
     frame = []

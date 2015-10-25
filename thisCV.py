@@ -199,7 +199,7 @@ def flood_it(im,newVal):
     cv2.floodFill(im, mask, seed, newVal, 0, 255, rect)
 
 def add_operation(operation_name, im_steps, im):
-    return im_steps.append( [operation_name, [im] ] )
+    return im_steps.insert(0, [operation_name, [im] ] )
 
 def stepCV(frame, cTag):
     im_steps = []
