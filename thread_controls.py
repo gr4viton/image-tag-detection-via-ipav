@@ -117,7 +117,7 @@ class FindtagControl():
         self.im_tags = im_tags
 
         # here raise an event for the conversion and redrawing to happen
-        time.sleep(0.0001)
+        # time.sleep(0.0001)
 
 
     def update_findtag_gui(self,frame, tag_model, running_findtag):

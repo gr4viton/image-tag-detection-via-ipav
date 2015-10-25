@@ -154,6 +154,7 @@ class Multicopter(BoxLayout):
     sla_tags = ObjectProperty()
     layout_steps = ObjectProperty()
     # img_steps = ObjectProperty()
+    label_mean_exec_time = ObjectProperty()
 
     def __init__(self, capture_control, findtag_control, **kwargs):
         # make sure we aren't overriding any important functionality
@@ -164,7 +165,7 @@ class Multicopter(BoxLayout):
         self.step_widgets_control = StepWidgetControl(self.layout_steps)
 
 class multicopterApp(App):
-    frame = []
+    # frame = []
     # running_findtag = False
     def build(self):
         # root.bind(size=self._update_rect, pos=self._update_rect)
@@ -216,6 +217,9 @@ class multicopterApp(App):
         im_steps = self.findtag_control.im_steps
         self.root.step_widgets_control.update_layout_steps(im_steps)
         # self.root.update_layout_steps(im_steps)
+
+        self.root.label_mean_exec_time.text = str(
+            self.findtag_control.mean_exec_time*1000)
 
         imTags = self.findtag_control.im_tags
 

@@ -12,7 +12,7 @@
 #    sla_tags: sla_tags
     layout_steps: layout_steps
 #    img_steps: img_steps # temporal
-
+    label_mean_exec_time: label_mean_exec_time
 
     GridLayout:
 #        size_hint_x: 1
@@ -66,6 +66,7 @@
             text: "findtag mean time [ms]"
             size_hint_y: 0.1
         Label:
+            id: label_mean_exec_time
 #            text: root.findtag_control.mean_exec_time
     Splitter:
 #        id: spl
