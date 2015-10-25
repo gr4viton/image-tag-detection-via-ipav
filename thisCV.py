@@ -214,7 +214,8 @@ def stepCV(frame, cTag):
     add_operation( 'gray', im_steps, im)
     # ____________________________________________________
     # adaptive image histogram equalization - create a CLAHE object (Arguments are optional).
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(4, 4))
     cl1 = clahe.apply(im)
     im = cl1
     add_operation( 'clahed', im_steps, im)
@@ -226,27 +227,27 @@ def stepCV(frame, cTag):
     # imDict.update( {'blurred',im} )
     # ____________________________________________________
     # Threshing - to get binary image out of gray one
-    im = inverte(im.copy())
-    add_operation( 'inverted', im_steps, im)
+    # im = inverte(im.copy())
+    # add_operation( 'inverted', im_steps, im)
     thresh = threshIT(im, 'otsu')
     im = thresh
     add_operation( 'thresholded', im_steps, im)
-    im = inverte(im.copy())
-    add_operation( 'inverted again', im_steps, im)
+    # im = inverte(im.copy())
+    # add_operation( 'inverted again', im_steps, im)
     # ____________________________________________________
     # inversion
     # im = inverte(im.copy())
     # ____________________________________________________
     # imclearborder - maskes out all contours which are touching the border
     killer_border_width = 5
-    killed_border = imclearborder(im, killer_border_width)
-    im = killed_border;
-    add_operation( 'killed border', im_steps, im)
+    border_touch_cleared = imclearborder(im, killer_border_width)
+    im = border_touch_cleared
+    add_operation( 'border touch cleared', im_steps, im)
     a = 1
-    killed_border = cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
+    removed_frame = cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
 
-    im = killed_border
-    add_operation( 'blacked border', im_steps, im)
+    im = removed_frame
+    add_operation( 'removed frame', im_steps, im)
     # ____________________________________________________
     # bwareaopen
     # delete too small groups of pixels - with contours - slow
@@ -261,6 +262,7 @@ def stepCV(frame, cTag):
     flood_it(flooded, 255)
     im = flooded
     add_operation( 'flooded with white', im_steps, im)
+
     flood_it(flooded, 0)
     im = flooded
     add_operation( 'flooded with black', im_steps, im)

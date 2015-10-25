@@ -219,8 +219,8 @@ class multicopterApp(App):
         # self.root.update_layout_steps(im_steps)
 
         self.root.label_mean_exec_time.text = str(
-            self.findtag_control.mean_exec_time*1000)
-
+            # self.findtag_control.mean_exec_time*1000)
+            self.findtag_control.exec_times[-1])
         imTags = self.findtag_control.im_tags
 
         # if len(self.root.layout.children) == 0:
@@ -231,7 +231,7 @@ class multicopterApp(App):
             self.root.txt_numFound.text = str(len(imTags))
 
             if len(imTags) > 0:
-                imAllTags = fh.joinIm( [[im] for im in imTags], 0 )
+                imAllTags = fh.joinIm( [[im] for im in imTags], 1 )
                 # update_image(image_label, imAllTags)
                 if len(imAllTags.shape) == 2:
                     imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)

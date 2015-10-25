@@ -107,9 +107,11 @@ class FindtagControl():
             self.findtag()
 
     def findtag(self):
-        start = timeit.timeit()
+        # start = timeit.timeit()
+        start = time.time()
         im_steps, im_tags = stepCV(self.capture_control.frame, self.model_tag)
-        end = timeit.timeit()
+        # end = timeit.timeit()
+        end = time.time()
         self.add_exec_times(end-start)
         # print(end - start)
         # print(im_gray.shape)

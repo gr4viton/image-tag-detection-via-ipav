@@ -68,18 +68,23 @@
         Label:
             id: label_mean_exec_time
 #            text: root.findtag_control.mean_exec_time
+        Label:
+            text:
+                'splitter.width: {}\nparent.width: {}\nmax_size: {}'\
+                .format(spl.width, root.width, spl.max_size)
     Splitter:
-#        id: spl
+        id: spl
 
-        width: 1099
-        max_size: self.parent.width - 200
+        width: 1100
+        max_size: self.parent.width - 50
+#        spl.width : 1100
 #        self.width
-#        Label:
-#            text:
-#                'splitter.width: {}\nparent.width: {}\nmax_size: {}'\
-#                .format(spl.width, root.width, spl.max_size)
+        size: 1100, 700
+        size_hint: None,1
+
         GridLayout:
-            cols: 1
+            cols: 2
+#            width: 1100
 #            size_hint_x: 1
             orientation: 'vertical'
 #            id: gl_middle
@@ -96,8 +101,12 @@
 #                orientation: 'tb-lr'
                 size_hint_x: 1
                 id: layout_steps
-            Image:
-                id: img_tags
+
+            GridLayout:
+                cols: 1
+                size_hint_x: 0.2
+                Image:
+                    id: img_tags
     #        Button:
     #            text: 'Save the matrix??'
 
@@ -118,17 +127,14 @@
 <StepWidget>:
     toggle_object: toggle
     kivy_image: kivy_image
-    size_hint_y: 0.6
+    size_hint_y: 0.4
     size_hint_x: 0.33
     cols: 1
     ToggleButton:
         id: toggle
         text: root.name
-        size_hint_y: 0.2
-#        state: root.drawing
+        size_hint_y: 0.15
         state: 'down'
-#        on_press: root.drawing = (self.state == 'down')
-#        on_state: root.drawing = (self.state == 'down')
         on_state: root.set_drawing(self.state == 'down')
 
     Image:
