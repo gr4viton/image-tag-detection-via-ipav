@@ -199,30 +199,37 @@ def floodIt(im,newVal):
     cv2.floodFill(im, mask, seed, newVal, 0, 255, rect)
 
 def stepCV(frame, cTag):
+    imList = []
     a = 0.5
     im = cv2.resize(frame, (0, 0), fx=a, fy=a)
     # im = frame
-
+    imList.append( ['resized',im.copy()] )
     # ____________________________________________________
     # RGB -> gray
     gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
     im = gray
+    imList.append( ['gray',im.copy()] )
     # ____________________________________________________
     # adaptive image histogram equalization - create a CLAHE object (Arguments are optional).
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     cl1 = clahe.apply(im)
     im = cl1
+    imList.append( ['clahed',im.copy()] )
     # ____________________________________________________
     # gaussian blur
     # blur = gaussIt(im,7)
-    blur = blurIt(im,75)
-    im = blur
+    # blur = blurIt(im,75)
+    # im = blur
+    # imDict.update( {'blurred',im} )
     # ____________________________________________________
     # Threshing - to get binary image out of gray one
     im = inverte(im.copy())
+    imList.append( ['inverted',im.copy()] )
     thresh = threshIT(im, 'otsu')
     im = thresh
+    imList.append( ['threshed',im.copy()] )
     im = inverte(im.copy())
+    imList.append( ['inverted again',im.copy()] )
     # ____________________________________________________
     # inversion
     # im = inverte(im.copy())
@@ -230,10 +237,13 @@ def stepCV(frame, cTag):
     # imclearborder - maskes out all contours which are touching the border
     killerBorder = 5
     killedBorder= imclearborder(im, killerBorder)
+    im = killedBorder;
+    imList.append( ['killed border',im.copy()] )
     a = 1
-    killedBorder = cv2.copyMakeBorder(killedBorder[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
+    killedBorder = cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
 
     im = killedBorder
+    imList.append( ['blacked border',im.copy()] )
     # ____________________________________________________
     # bwareaopen
     # delete too small groups of pixels - with contours - slow
@@ -246,8 +256,11 @@ def stepCV(frame, cTag):
     # flood
     flooded = im.copy()
     floodIt(flooded, 255)
+    im = flooded
+    imList.append( ['flooded with white',im.copy()] )
     floodIt(flooded, 0)
     im = flooded
+    imList.append( ['flooded with black',im.copy()] )
     # ____________________________________________________
     # findTags and put them into imTags list
     paired, imTags = findTags(im, cTag)
@@ -274,6 +287,7 @@ def stepCV(frame, cTag):
     cv2.putText(imWhole, text, hw, font, 1, col)
     # ____________________________________________________
     return imWhole, imTags
+    # return imList, imTags
 
 def loopCV(cap):
     print("loopCV started")

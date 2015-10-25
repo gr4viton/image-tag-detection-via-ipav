@@ -37,6 +37,7 @@ class Multicopter(GridLayout):
 
     def toggle_source_id(self):
         self.root_toggle_source_id()
+
 class multicopterApp(App):
     def build(self):
         self.root = root = Multicopter(self.toggle_source_id)
@@ -69,16 +70,27 @@ class multicopterApp(App):
 
     def update(self, dt):
         ret, frame = self.capture.read()
+        # imList, imTags = stepCV(frame,self.cTag)
         imWhole, imTags = stepCV(frame,self.cTag)
-
         # self.root.img_webcam.texture = self.convert_to_texture(frame)
 
+        # if imList is not None:
         if imWhole is not None:
+            # imWhole = []
+            k = 1
+            # for imItem in imList:
+            #     if imWhole == []:
+            #         imWhole = imItem[1]
+            #     else:
+            #         print(k)
+            #         # [ imWhole.append(im)]
+            #         # imWhole = fh.joinIm([ [imWhole], [imItem[1]] ],1)
+
             if len(imWhole.shape) == 2:
                 imWhole = cv2.cvtColor(imWhole, cv2.COLOR_GRAY2RGB)
             self.root.img_webcam.texture = self.convert_to_texture(imWhole)
         if imTags is not None:
-            txt_numFound = len(imTags)
+            self.root.txt_numFound.text = str(len(imTags))
             if len(imTags) > 0:
                 imAllTags = fh.joinIm( [[im] for im in imTags], 1 )
                 # update_image(image_label, imAllTags)

@@ -343,6 +343,7 @@ def joinIm(ims, vertically = 0, color = 0):
     for im in ims:
         im = im[0]
         if imLast != []:
+            # print(vertically)
             if (im.shape[vertically] - imLast.shape[vertically]) > 0:
                # im is bigger
                imLast = joinTwoIm(im,imLast,vertically, color)
@@ -531,7 +532,7 @@ if __name__ == '__main__':
     cSeenTag = C_observedTag(imScene.copy())
     success = cSeenTag.findWarpMatrix(cTagModel)
     if not success:
-        print 'Tag from scene could not be transformed!'
+        print('Tag from scene could not be transformed!')
         exit
 
     imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)
