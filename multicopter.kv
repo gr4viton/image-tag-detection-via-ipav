@@ -130,6 +130,20 @@
     size_hint_y: 0.4
     size_hint_x: 0.33
     cols: 1
+    padding: (2,2,2,2)
+    spacing: (2,2)
+#    border: 2
+    thickness: 1
+    margin: 1
+#    height: self.thickness + 2 * self.margin
+    color: .16,.16 , .24
+    canvas.before:
+        Color:
+            rgb: self.color
+        Rectangle:
+            pos: self.x + self.margin, self.y + self.margin + 1
+            size: self.width - 2 * self.margin , self.height - 2 * self.margin
+#            self.thickness
     ToggleButton:
         id: toggle
         text: root.name
