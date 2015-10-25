@@ -37,19 +37,19 @@ def convert_rgb_to_texture(im_rgb):
     texture1.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
     return texture1
 
-class ImageButton(ButtonBehavior, Image):
-
-    # def __init__(self, toggle_drawing, **kwargs):
-        # super(Image, self).__init__(**kwargs)
-        # super(ButtonBehavior, self).__init__(**kwargs)
-        # self.toggle_drawing = toggle_drawing
-    pass
+# class ImageButton(ButtonBehavior, Image):
+#
+#     # def __init__(self, toggle_drawing, **kwargs):
+#         # super(Image, self).__init__(**kwargs)
+#         # super(ButtonBehavior, self).__init__(**kwargs)
+#         # self.toggle_drawing = toggle_drawing
+#     pass
 
 class StepWidget(GridLayout):
 
     name = StringProperty()
     drawing = ObjectProperty('down')
-    # kivy_image = ObjectProperty()
+    kivy_image = ObjectProperty()
     toggle_object = ObjectProperty()
 
 
@@ -60,8 +60,8 @@ class StepWidget(GridLayout):
         self.texture = Texture.create(size = (10,10), colorfmt='bgr')
         self.name = 'default name'
         # self.kivy_image = ImageButton(self.toggle_drawing)
-        self.kivy_image = ImageButton()
-        self.add_widget(self.kivy_image)
+        # self.kivy_image = ImageButton()
+        # self.add_widget(self.kivy_image)
 
     def recreate_texture(self, cv_image):
         self.texture = Texture.create(
@@ -85,10 +85,19 @@ class StepWidget(GridLayout):
 
     def set_drawing(self, value):
         # print(value)
+        self.drawing = value
         if value == True:
             self.toggle_object.state = 'down'
+            # self.kivy_image.size_hint = (1, 0.9)
+            # self.kivy_image.width = 100
+            self.size_hint_x = 0.33
+            # self.size_hint_y = 1
         if value == False:
             self.toggle_object.state = 'normal'
+            # self.kivy_image.width = 40
+            # self.kivy_image.size_hint = (0.1, 0.1)
+            self.size_hint_x = 0.33/3
+            # self.size_hint_y = 0.2
 
     def toggle_drawing(self):
         if self.toggle_object.state == 'down':

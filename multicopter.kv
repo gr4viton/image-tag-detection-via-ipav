@@ -9,7 +9,7 @@
     img_webcam: img_webcam
     img_tags: img_tags
     txt_numFound: txt_numFound
-    sla_tags: sla_tags
+#    sla_tags: sla_tags
     layout_steps: layout_steps
 #    img_steps: img_steps # temporal
 
@@ -27,6 +27,14 @@
 #                pos: self.pos
 #                size: self.size
 
+        Button:
+            text: "Hide all"
+            size_hint_y: 0.1
+            on_press: root.step_widgets_control.show('none')
+        Button:
+            text: "Show all"
+            size_hint_y: 0.1
+            on_press: root.step_widgets_control.show('all')
         Button:
 #            text: 'Switch cameras'
             text: 'Toggle findtag algorythm'
@@ -47,9 +55,24 @@
             size_hint_y: 0.1
         Image:
             id: img_webcam
+        Label:
+            text: "Number of found tags in image"
+            size_hint_y: 0.1
+        Label:
+            id: txt_numFound
+#            text: root.str_num_found
+            size_hint_y: 0.1
+        Label:
+            text: "findtag mean time [ms]"
+            size_hint_y: 0.1
+        Label:
+#            text: root.findtag_control.mean_exec_time
     Splitter:
 #        id: spl
+
+        width: 1099
         max_size: self.parent.width - 200
+#        self.width
 #        Label:
 #            text:
 #                'splitter.width: {}\nparent.width: {}\nmax_size: {}'\
@@ -59,36 +82,19 @@
 #            size_hint_x: 1
             orientation: 'vertical'
 #            id: gl_middle
-            id: sla_steps
+#            id: sla_steps
             padding: 10
 #            ScrollView:
 #                size: root.size
     #            do_scroll: 1
+#            ScrollView:
+#                viewport_size: root.size
+#                do_scroll_x: False
             StackLayout:
                 orientation: 'lr-tb'
-
+#                orientation: 'tb-lr'
+                size_hint_x: 1
                 id: layout_steps
-
-            Label:
-                text: "Number of found tags in image"
-                size_hint_y: 0.1
-            Label:
-                id: txt_numFound
-    #            text: root.str_num_found
-                size_hint_y: 0.1
-            Label:
-                text: "findtag mean time [ms]"
-                size_hint_y: 0.1
-            Label:
-    #            text: root.findtag_control.mean_exec_time
-            StackLayout:
-                id: sla_tags
-            Button:
-                text: "Hide all"
-                on_press: root.step_widgets_control.show('none')
-            Button:
-                text: "Show all"
-                on_press: root.step_widgets_control.show('all')
             Image:
                 id: img_tags
     #        Button:
@@ -108,29 +114,31 @@
         #            text: 'Exit'
         #            on_press: Exit()
 
-<ImageButton>:
-#    id: kivy_image
-    size_hint_y: 0.9
-#    background_normal: 'True'
-#    on_touch_down: root.drawing = (toggle.state == 'down')
-#    on_press: print('jasd')
-    #self.toggle_drawing()
-#    root.drawing = (toggle_object.state == 'down')
-
 <StepWidget>:
     toggle_object: toggle
-#    kivy_image: kivy_image
-    size_hint_x: '1'
+    kivy_image: kivy_image
+    size_hint_y: 0.6
+    size_hint_x: 0.33
     cols: 1
     ToggleButton:
         id: toggle
         text: root.name
-        size_hint_y: 0.1
+        size_hint_y: 0.2
 #        state: root.drawing
         state: 'down'
 #        on_press: root.drawing = (self.state == 'down')
-        on_state: root.drawing = (self.state == 'down')
+#        on_state: root.drawing = (self.state == 'down')
+        on_state: root.set_drawing(self.state == 'down')
 
+    Image:
+        id: kivy_image
+        size_hint_y: 0.8
+#        size_hint_x: 1
+        background_normal: 'True'
+    #    on_touch_down: root.drawing = (toggle.state == 'down')
+    #    on_press: print('jasd')
+        #self.toggle_drawing()
+    #    root.drawing = (toggle_object.state == 'down')
 
 #    GridLayout
 #        cols: 1
