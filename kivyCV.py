@@ -14,7 +14,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.button import Button
 # from kivy.uix.checkbox import CheckBox
 from kivy.uix.togglebutton import ToggleButton
-from kivy.properties import ObjectProperty, StringProperty
+from kivy.properties import ObjectProperty, StringProperty, NumericProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.config import Config
 
@@ -51,10 +51,11 @@ class StepWidget(GridLayout):
     drawing = ObjectProperty('down')
     kivy_image = ObjectProperty()
     toggle_object = ObjectProperty()
-
+    # layout_steps_height = NumericProperty(1600)
 
     def __init__(self, **kwargs):
         super(StepWidget, self).__init__(**kwargs)
+        # self.layout_steps = kwargs['parent']
         self.name = ''
         self.drawing = True
         self.texture = Texture.create(size = (10,10), colorfmt='bgr')
@@ -96,7 +97,7 @@ class StepWidget(GridLayout):
             self.toggle_object.state = 'normal'
             # self.kivy_image.width = 40
             # self.kivy_image.size_hint = (0.1, 0.1)
-            self.size_hint_x = 0.33/3
+            self.size_hint_x = 0.33/9
             # self.size_hint_y = 0.2
 
     def toggle_drawing(self):
@@ -143,7 +144,7 @@ class StepWidgetControl():
                     [widget.update_texture(np.uint8(im_item[1][0].copy()))
                      for (im_item, widget) in zip(im_steps, self.layout_steps.children)]
 
-class Multicopter(BoxLayout):
+class Multicopter(GridLayout):
     gl_left = ObjectProperty()
     gl_middle = ObjectProperty()
     gl_right = ObjectProperty()
@@ -172,6 +173,8 @@ class multicopterApp(App):
         h = 700
         w = 1300
         Config.set('kivy', 'show_fps', 1)
+        Config.set('kivy', 'desktop', 1)
+
         # Config.set('graphics', 'window_state', 'maximized')
         Config.set('graphics', 'position', 'custom')
         Config.set('graphics', 'height', h)
@@ -219,8 +222,8 @@ class multicopterApp(App):
         # self.root.update_layout_steps(im_steps)
 
         self.root.label_mean_exec_time.text = str(
-            str(np.round(self.findtag_control.exec_times[-1], 5) * 1000) + "\n" +
-            str(np.round(self.findtag_control.mean_exec_time, 5) * 1000)
+            str(np.round(self.findtag_control.execution_time[-1], 5) * 1000) + "\n" +
+            str(np.round(self.findtag_control.mean_execution_time, 5) * 1000)
             )
         imTags = self.findtag_control.im_tags
 

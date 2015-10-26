@@ -68,14 +68,14 @@ class FindtagControl():
     im_tags = LockedNumpyArray()
     findtagging = LockedValue(False)
     model_tag = LockedValue()
-    # exec_times = LockedValue([])
-    mean_exec_time = LockedValue(0)
+    # execution_time = LockedValue([])
+    mean_execution_time = LockedValue(0)
 
     def __init__(self, capture_control):
         self.capture_control = capture_control
         self.init_findtag()
-        self.exec_times_max_len = 50
-        self.exec_times = []
+        self.execution_time_len = 50
+        self.execution_time = []
 
     def init_findtag(self):
         self.model_tag = fh.read_model_tag('2L')
@@ -95,12 +95,12 @@ class FindtagControl():
         self.findtagging = False
 
     def add_exec_times(self, tim):
-        if len(self.exec_times) > self.exec_times_max_len:
-            self.exec_times.pop(0)
+        if len(self.execution_time) > self.execution_time_len:
+            self.execution_time.pop(0)
             self.add_exec_times(tim)
         else:
-            self.exec_times.append(tim)
-        self.mean_exec_time = np.sum(self.exec_times) / len(self.exec_times)
+            self.execution_time.append(tim)
+        self.mean_execution_time = np.sum(self.execution_time) / len(self.execution_time)
 
     def findtag_loop(self):
         while self.findtagging:

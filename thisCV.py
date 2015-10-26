@@ -3,7 +3,7 @@ import cv2
 import findHomeography as fh
 # from cv2 import xfeatures2d
 # import common
-
+import time
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # global variables
 global tracker, ar_verts, ar_edges
@@ -201,6 +201,42 @@ def flood_it(im,newVal):
 def add_operation(operation_name, im_steps, im):
     return im_steps.insert(0, [operation_name, [im] ] )
 
+class Step():
+
+    def __init__(self, name, function):
+        self.name = name
+        self.function = function
+        self.execution_time_len = 15
+        self.execution_time = 0
+        self.mean_execution_time = 0
+
+    def run(self, input):
+        start = time.time()
+        self.ret = self.function(input)
+        end = time.time()
+        self.add_exec_times(end-start)
+        return self.ret
+
+    def add_exec_times(self, tim):
+        if len(self.execution_time) > self.execution_time_len:
+            self.execution_time.pop(0)
+            self.add_exec_times(tim)
+        else:
+            self.execution_time.append(tim)
+        self.mean_execution_time = np.sum(self.execution_time) / len(self.execution_time)
+
+class StepControl():
+
+    def __init__(self):
+        self.steps = []
+
+        def make_gray(im):
+            return cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+
+        self.steps.append(Step('gray', make_gray))
+
+step_control = StepControl()
+
 def stepCV(frame, cTag):
     im_steps = []
     a = 0.5
@@ -209,6 +245,8 @@ def stepCV(frame, cTag):
     # add_operation( 'resized', im_steps, im)
     # ____________________________________________________
     # RGB -> gray
+    # for step in step_control.steps:
+    #     im = step.function(im)
     gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
     im = gray
     add_operation( 'gray', im_steps, im)

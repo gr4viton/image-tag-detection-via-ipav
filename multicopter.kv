@@ -2,7 +2,7 @@
 
 
 <Multicopter>:
-#    cols: 1
+    cols: 2
     gl_left: gl_left
 #    gl_middle: gl_middle
 #    gl_right: gl_right
@@ -14,6 +14,13 @@
 #    img_steps: img_steps # temporal
     label_mean_exec_time: label_mean_exec_time
 
+#    ScrollView:
+#        Label:
+#            text: str('looooooong text '*1000)
+#            font_size: 12
+#            text_size: self.width, None
+#            size_hint_y: None
+#            height: self.texture_size[1]
     GridLayout:
 #        size_hint_x: 1
         cols:1
@@ -38,73 +45,98 @@
         Button:
 #            text: 'Switch cameras'
             text: 'Toggle findtag algorythm'
-            size_hint_y: .05
+            size_hint_y: .1
             on_press: root.findtag_control.toggle_findtagging()
             # pos_hint: {'center_x':.5, 'center_y': .5}
         Button:
             text: 'Toggle capturing'
-            size_hint_y: .05
+            size_hint_y: .1
             on_press: root.capture_control.toggle_capturing();
         Button:
             text: 'Switch cameras'
-            size_hint_y: .05
+            size_hint_y: .1
             on_press: root.capture_control.toggle_source_id();
             # pos_hint: {'center_x':.5, 'center_y': .5}
-        GridLayout:
-            cols: 1
-            size_hint_y: 0.1
         Image:
             id: img_webcam
         Label:
-            text: "Number of found tags in image"
+            text: "Found tags:"
             size_hint_y: 0.1
         Label:
             id: txt_numFound
 #            text: root.str_num_found
             size_hint_y: 0.1
         Label:
-            text: "findtag mean time [ms]"
+            text: "findtag mean [ms]"
             size_hint_y: 0.1
         Label:
             id: label_mean_exec_time
+            size_hint_y: 0.2
 #            text: root.findtag_control.mean_exec_time
         Label:
             text:
                 'splitter.width: {}\nparent.width: {}\nmax_size: {}'\
                 .format(spl.width, root.width, spl.max_size)
+
     Splitter:
         id: spl
 
-        width: 1100
+#        width: 1100
         max_size: self.parent.width - 50
 #        spl.width : 1100
 #        self.width
-        size: 1100, 700
+        size: 1100, 400
         size_hint: None,1
 
         GridLayout:
             cols: 2
 #            width: 1100
 #            size_hint_x: 1
-            orientation: 'vertical'
+#            orientation: 'vertical'
 #            id: gl_middle
 #            id: sla_steps
-            padding: 10
+            padding: 5
 #            ScrollView:
 #                size: root.size
     #            do_scroll: 1
 #            ScrollView:
 #                viewport_size: root.size
 #                do_scroll_x: False
-            StackLayout:
-                orientation: 'lr-tb'
-#                orientation: 'tb-lr'
-                size_hint_x: 1
-                id: layout_steps
+
+            GridLayout:
+                cols:2
+                id: grid_steps
+                ScrollView:
+                    id: scroll_steps
+    #                    do_scroll_y: 'True'
+    #                    size_hint: 1, None
+    #                    size: grid_steps.size
+    #                    minimum_height
+                    StackLayout:
+                        height: self.minimum_height -0
+                        size_hint_y: None
+#                        size_hint_x: 1
+    #                        allow_stretch: True
+    #                        height: scroll_steps.height
+    #                        size_hint_y: 1
+                        id: layout_steps
+    #                        minimum_height = self.height
+                        orientation: 'lr-tb'
+        #                orientation: 'tb-lr'
+    #                        size_hint_x: 1
 
             GridLayout:
                 cols: 1
                 size_hint_x: 0.2
+                margin: 1
+                color: .08,.16 , .24
+                padding: (2,2,2,2)
+                canvas.before:
+                    Color:
+                        rgb: self.color
+                    Rectangle:
+                        pos: self.x + self.margin, self.y + self.margin + 1
+                        size: self.width - 2 * self.margin , self.height - 2 * self.margin
                 Image:
                     id: img_tags
     #        Button:
@@ -127,16 +159,18 @@
 <StepWidget>:
     toggle_object: toggle
     kivy_image: kivy_image
-    size_hint_y: 0.4
-    size_hint_x: 0.33
+#    layout_steps_height: 1500
+#    size_hint_y: 0.4
+    size_hint_y: None
+#    height: self.minimum_height * 4
+    height: 300
+#    size_hint_y: layout_steps_height / 400
+    size_hint_x: 1/3
     cols: 1
     padding: (2,2,2,2)
     spacing: (2,2)
-#    border: 2
-    thickness: 1
     margin: 1
-#    height: self.thickness + 2 * self.margin
-    color: .16,.16 , .24
+    color: .08,.16 , .24
     canvas.before:
         Color:
             rgb: self.color
