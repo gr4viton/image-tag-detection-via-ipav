@@ -9,7 +9,7 @@
 #    txt_numFound: txt_numFound
     sla_tags: sla_tags
     sla_steps: sla_steps
-
+    img_steps: img_steps # temporal
     GridLayout:
         size_hint_x: 1
         cols:1
@@ -40,6 +40,8 @@
             # pos_hint: {'center_x':.5, 'center_y': .5}
         Image:
             id: img_webcam
+        Image:
+            id: img_steps # temporal
 #        StackLayout:
 #            orientation: 'tb-lr'
 #            size_hint: 2, 2
