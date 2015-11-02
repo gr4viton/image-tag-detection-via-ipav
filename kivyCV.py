@@ -237,21 +237,34 @@ class multicopterApp(App):
         self.root = root = Multicopter(self.capture_control, None)
         self.build_opencv()
         return root
+    def run(self):
+        capture_control = CaptureControl()
+        capture_control.start_capturing()
+        capture_control.thread_running = True
+        # capture_thread = CaptureThread(capture_control)
+
+        th1 = threading.Thread(target=capture_loop, args=(capture_control,))
+        th2 = threading.Thread(target=capture_loop, args=(capture_control,))
+
+        th1.start()
+        th2.start()
+
+        super(multicopterApp, self).run()
 
     def init_threads(self):
         self.capture_control = CaptureControl()
-        self.capture_control.start_capturing()
-        self.capture_thread = CaptureThread(self.capture_control)
-        self.capture_thread.start()
+        # self.capture_control.start_capturing()
+        # self.capture_thread = CaptureThread(self.capture_control)
+        # self.capture_thread.start()
 
 
-        self.capture_control.thread_running = True
+        # self.capture_control.thread_running = True
         # self.capture_thread.run()
 
-        print('aaa')
-        # self.capture_thread.join()
-        self.capture_thread.join(timeout=0)
-        # self.capture_thread.run()
+        # print('aaa')
+        # # self.capture_thread.join()
+        # self.capture_thread.join(timeout=0)
+        # # self.capture_thread.run()
         print('aaa')
 
         # cap = cv2.VideoCapture(self.videoId)
@@ -466,19 +479,17 @@ class CaptureThread():
             time.sleep(self.sleepTime)
             # frames?
 
+def capture_loop(capture_control):
+    while capture_control.thread_running:
+        if capture_control.capturing:
+            capture_control.capture_frame()
+        print(time.time(),' - ', threading.current_thread().name)
+        # threading.currentThread.
+        time.sleep(1)
+        # frames?
+
 if __name__ == '__main__':
-    # multicopterApp().run()
-    capture_control = CaptureControl()
-    capture_control.start_capturing()
-    capture_thread = CaptureThread(capture_control)
-    capture_control.thread_running = True
+    multicopterApp().run()
 
-    th1 = threading.Thread(target=capture_thread.capture_loop)
-    # capture_thread.start()
 
-    th2 = threading.Thread(target=capture_thread.capture_loop)
-
-    th1.start()
-    th2.start()
-    # self.capture_thread.run()
 
