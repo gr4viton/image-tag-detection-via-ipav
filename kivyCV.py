@@ -224,8 +224,6 @@ class CaptureControl():
         self.source_id = 0
         self.init_capture()
         self.sleepTime = 0.01
-        # self.thread = threading.Thread(target=self.capture_loop)
-        self.thread = None
         self.thread = threading.Thread(target=self.capture_loop)
 
     def init_capture(self):
@@ -243,10 +241,6 @@ class CaptureControl():
         self.capture_lock.release()
         self.frame = frame
         print(self.frame.shape)
-
-    # def get_frame(self):
-    #     # self.capture()
-    #     return self.frame # the property class LockedValue manages the locking
 
     def open_source_id(self, new_source_id):
         self.capture_lock.acquire()
@@ -288,7 +282,7 @@ class CaptureControl():
         while self.thread_running:
             if self.capturing:
                 self.capture_frame()
-            print(time.time(),' - ', threading.current_thread().name)
+            # print(time.time(),' - ', threading.current_thread().name)
             # threading.currentThread.
             time.sleep(self.sleepTime)
             # frames?
@@ -311,65 +305,25 @@ class multicopterApp(App):
         Config.set('graphics', 'width', w)
         Config.set('graphics', 'top', 15)
         Config.set('graphics', 'left', 4)
-
         # Config.set('graphics', 'fullscreen', 'fake')
         # Config.set('graphics', 'fullscreen', 1)
 
-        self.init_threads()
+        self.capture_control = CaptureControl()
+        self.capture_control.start_capturing()
         self.root = root = Multicopter(self.capture_control, None)
         self.build_opencv()
         return root
 
-    def run(self):
-        capture_control = CaptureControl()
-        capture_control.start_capturing()
-
-        super(multicopterApp, self).run()
-
-    def init_threads(self):
-        self.capture_control = CaptureControl()
-        # self.capture_control.start_capturing()
-        # self.capture_thread = CaptureThread(self.capture_control)
-        # self.capture_thread.start()
-
-
-        # self.capture_control.thread_running = True
-        # self.capture_thread.run()
-
-        # print('aaa')
-        # # self.capture_thread.join()
-        # self.capture_thread.join(timeout=0)
-        # # self.capture_thread.run()
-        print('aaa')
-
-        # cap = cv2.VideoCapture(self.videoId)
-
-    # def image_capture(self):
-
-
     def build_opencv(self):
-        # self.source_id = 0
-        # self.capture = cv2.VideoCapture(self.source_id)
         self.cTag = fh.readTag('2L')
-
-        # ret, frame = self.capture.read()
-        # if frame is None:
-        #     raise('No camera attached on sourceId ' + str(self.source_id))
 
         # self.update_fps = 1.0/33.0
         self.fps_source = 1.0/50.0
-        # self.fps_findTag = 1.0/1.0 # make it through trigger to play as fast as possible
 
         Clock.schedule_interval(self.update_source, self.fps_source )
         print('scheduled interval')
         # capturing thread
 
-        # self.q_frame = Queue()
-        #
-        # d = dict( [ ('q_frame', self.q_frame ),
-        #             ('running_findtag', self.running_findtag)] )
-        # p = Process(target=self.image_capture, kwargs=d)
-        #
         # # findtag algorythm thread
         # thread_findtag_dict = {}
         # thread_findtag_dict = dict( [('frame',self.frame),
