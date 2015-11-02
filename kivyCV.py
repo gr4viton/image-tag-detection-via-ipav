@@ -226,7 +226,8 @@ class CaptureControl():
         self.sleepTime = 0.01
         # self.thread = threading.Thread(target=self.capture_loop)
         self.thread = None
-        # self.thread = threading.Thread(target=capture_control.capture_loop)
+        self.thread = threading.Thread(target=self.capture_loop)
+
     def init_capture(self):
         self.capture_lock.acquire()
         self.capture = cv2.VideoCapture()
@@ -324,7 +325,7 @@ class multicopterApp(App):
         capture_control.start_capturing()
         # capture_thread = CaptureThread(capture_control)
 
-        capture_control.thread = threading.Thread(target=capture_control.capture_loop)
+        # capture_control.thread = threading.Thread(target=capture_control.capture_loop)
         # th1 = threading.Thread(target=capture_control.capture_loop)
         # th2 = threading.Thread(target=capture_control.capture_loop)
 
