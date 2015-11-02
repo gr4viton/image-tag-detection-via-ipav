@@ -210,6 +210,83 @@ class FindTagThread(threading.Thread):
 
 
 
+class CaptureControl():
+    """
+    Shared class to control source capture execution
+    """
+    frame = LockedNumpyArray( np.ones( (32,24,3,), np.uint8 ) * 255 )
+    capturing = LockedValue(False)
+    thread_running = LockedValue(False)
+
+    def __init__(self):
+        self.capture_lock = threading.Lock()
+        self.capture = None
+        self.source_id = 0
+        self.init_capture()
+        self.sleepTime = 0.01
+
+    def init_capture(self):
+        self.capture_lock.acquire()
+        self.capture = cv2.VideoCapture()
+        self.capture_lock.release()
+
+    def capture_frame(self):
+        self.capture_lock.acquire()
+        if self.capture.isOpened() != True:
+            # self.open_capture()
+            raise('Cannot read frame as the capture is not opened')
+        else:
+            ret, frame = self.capture.read()
+        self.capture_lock.release()
+        self.frame = frame
+        print(self.frame.shape)
+
+    # def get_frame(self):
+    #     # self.capture()
+    #     return self.frame # the property class LockedValue manages the locking
+
+    def open_source_id(self, new_source_id):
+        self.capture_lock.acquire()
+        self.source_id = new_source_id
+        self.capture_lock.release()
+        self.open_source_id()
+
+    def open_capture(self):
+        self.capture_lock.acquire()
+        self.capture.open(self.source_id)
+        if self.capture.isOpened() != True:
+            raise('Cannot open capture source_id ', self.source_id)
+        print('Opened capture source_id ' + str(self.source_id))
+        self.capture_lock.release()
+
+    def toggle_source_id(self):
+        self.capture_lock.acquire()
+        self.source_id = np.mod(self.source_id+1, 2)
+        self.capture_lock.release()
+        self.open_capture()
+
+    def close_capture(self):
+        self.capture_lock.acquire()
+        self.capture.release()
+        self.capture_lock.release()
+
+    def start_capturing(self):
+        self.open_capture()
+        self.capturing = True
+
+    def on_stop(self):
+        self.capturing = False
+        self.thread_running = False
+        self.close_capture()
+
+    def capture_loop(self):
+        while self.thread_running:
+            if self.capturing:
+                self.capture_frame()
+            print(time.time(),' - ', threading.current_thread().name)
+            # threading.currentThread.
+            time.sleep(self.sleepTime)
+            # frames?
 
 
 
@@ -243,11 +320,11 @@ class multicopterApp(App):
         capture_control.thread_running = True
         # capture_thread = CaptureThread(capture_control)
 
-        th1 = threading.Thread(target=capture_loop, args=(capture_control,))
-        th2 = threading.Thread(target=capture_loop, args=(capture_control,))
+        th1 = threading.Thread(target=capture_control.capture_loop)
+        # th2 = threading.Thread(target=capture_control.capture_loop)
 
         th1.start()
-        th2.start()
+        # th2.start()
 
         super(multicopterApp, self).run()
 
@@ -380,113 +457,8 @@ class multicopterApp(App):
 
 
 
-class CaptureControl():
-    """
-    Shared class to control source capture execution
-    """
-    frame = LockedNumpyArray( np.ones( (32,24,3,), np.uint8 ) * 255 )
-    capturing = LockedValue(False)
-    thread_running = LockedValue(False)
-
-    def __init__(self):
-        self.capture_lock = threading.Lock()
-        self.capture = None
-        self.source_id = 0
-        self.init_capture()
-
-    def init_capture(self):
-        self.capture_lock.acquire()
-        self.capture = cv2.VideoCapture()
-        self.capture_lock.release()
-
-    def capture_frame(self):
-        self.capture_lock.acquire()
-        if self.capture.isOpened() != True:
-            # self.open_capture()
-            raise('Cannot read frame as the capture is not opened')
-        else:
-            ret, frame = self.capture.read()
-        self.capture_lock.release()
-        self.frame = frame
-        print(self.frame.shape)
-
-    # def get_frame(self):
-    #     # self.capture()
-    #     return self.frame # the property class LockedValue manages the locking
-
-    def open_source_id(self, new_source_id):
-        self.capture_lock.acquire()
-        self.source_id = new_source_id
-        self.capture_lock.release()
-        self.open_source_id()
-
-    def open_capture(self):
-        self.capture_lock.acquire()
-        self.capture.open(self.source_id)
-        if self.capture.isOpened() != True:
-            raise('Cannot open capture source_id ', self.source_id)
-        print('Opened capture source_id ' + str(self.source_id))
-        self.capture_lock.release()
-
-    def toggle_source_id(self):
-        self.capture_lock.acquire()
-        self.source_id = np.mod(self.source_id+1, 2)
-        self.capture_lock.release()
-        self.open_capture()
-
-    def close_capture(self):
-        self.capture_lock.acquire()
-        self.capture.release()
-        self.capture_lock.release()
-
-    def start_capturing(self):
-        self.open_capture()
-        self.capturing = True
-
-    def on_stop(self):
-        self.capturing = False
-        self.thread_running = False
-        self.close_capture()
-
-    # def capture_loop(self):
-    #     while self.thread_running:
-    #         if self.capturing:
-    #             self.capture_frame()
-    #         print(time.time(),' - ', threading.current_thread().name)
-    #         # threading.currentThread.
-    #         time.sleep(self.sleepTime)
-    #         # frames?
 
 
-
-class CaptureThread():
-    """
-    Thread running source capturing
-    """
-    def __init__(self, capture_control):
-        # threading.Thread.__init__(self)
-        self.capture_control = capture_control
-        # self.sleepTime = 0.1
-        self.sleepTime = 1
-
-        # self.capturingThread
-    def capture_loop(self):
-        while self.capture_control.thread_running:
-            if self.capture_control.capturing:
-                self.capture_control.capture_frame()
-            print(time.time(),' - ', threading.current_thread().name)
-            # threading.currentThread.
-            time.sleep(self.sleepTime)
-            # frames?
-
-def capture_loop(capture_control):
-    while capture_control.thread_running:
-        if capture_control.capturing:
-            capture_control.capture_frame()
-        print(time.time(),' - ', threading.current_thread().name)
-        # threading.currentThread.
-        time.sleep(1)
-        # frames?
 
 if __name__ == '__main__':
     multicopterApp().run()
