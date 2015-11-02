@@ -27,12 +27,16 @@
 #            text: 'Switch cameras'
             text: 'Toggle findtag algorythm'
             size_hint: .1, .05
-            on_press: root.toggle_findtag()
+            on_press: root.findtag_control.toggle_findtagging()
             # pos_hint: {'center_x':.5, 'center_y': .5}
+        Button:
+            text: 'Toggle capturing'
+            size_hint: .1, .05
+            on_press: root.capture_control.toggle_capturing();
         Button:
             text: 'Switch cameras'
             size_hint: .1, .05
-            on_press: root.toggle_source_id();
+            on_press: root.capture_control.toggle_source_id();
             # pos_hint: {'center_x':.5, 'center_y': .5}
         Image:
             id: img_webcam
