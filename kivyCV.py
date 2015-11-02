@@ -224,7 +224,9 @@ class CaptureControl():
         self.source_id = 0
         self.init_capture()
         self.sleepTime = 0.01
-
+        # self.thread = threading.Thread(target=self.capture_loop)
+        self.thread = None
+        # self.thread = threading.Thread(target=capture_control.capture_loop)
     def init_capture(self):
         self.capture_lock.acquire()
         self.capture = cv2.VideoCapture()
@@ -273,6 +275,8 @@ class CaptureControl():
     def start_capturing(self):
         self.open_capture()
         self.capturing = True
+        # self.thread.start()
+        self.thread_running = True
 
     def on_stop(self):
         self.capturing = False
@@ -314,16 +318,18 @@ class multicopterApp(App):
         self.root = root = Multicopter(self.capture_control, None)
         self.build_opencv()
         return root
+
     def run(self):
         capture_control = CaptureControl()
         capture_control.start_capturing()
-        capture_control.thread_running = True
         # capture_thread = CaptureThread(capture_control)
 
-        th1 = threading.Thread(target=capture_control.capture_loop)
+        capture_control.thread = threading.Thread(target=capture_control.capture_loop)
+        # th1 = threading.Thread(target=capture_control.capture_loop)
         # th2 = threading.Thread(target=capture_control.capture_loop)
 
-        th1.start()
+        capture_control.thread.start()
+        # th1.start()
         # th2.start()
 
         super(multicopterApp, self).run()
