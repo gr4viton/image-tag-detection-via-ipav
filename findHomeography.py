@@ -354,8 +354,14 @@ def joinIm(ims, vertically = 0, color = 0):
 
     return imLast
 
-def colorify(im):
+def colorifyGray(im):
     return cv2.cvtColor(im, cv2.COLOR_GRAY2RGB)
+
+def colorify(im):
+    if len(im.shape) == 2:
+        return cv2.cvtColor(im, cv2.COLOR_GRAY2RGB)
+    else:
+        return im.copy()
 
 def drawDots(im, dots, numbers=1):
     i = 0
@@ -551,7 +557,7 @@ if __name__ == '__main__':
 
     imBoth = joinIm([ [imTagFromScene], [imTag], [imScene] ])
 
-    imAll = colorify(imBoth)
+    imAll = colorifyGray(imBoth)
 
     # a = 0.5
     # imAll = cv2.resize(imAll, (0, 0), fx=a, fy=a)

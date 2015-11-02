@@ -198,23 +198,26 @@ def floodIt(im,newVal):
     # rect = 8
     cv2.floodFill(im, mask, seed, newVal, 0, 255, rect)
 
+def add_operation(operation_name, imList, im):
+    imList.append( [operation_name, [im] ] )
+
 def stepCV(frame, cTag):
     imList = []
     a = 0.5
     im = cv2.resize(frame, (0, 0), fx=a, fy=a)
     # im = frame
-    imList.append( ['resized',im.copy()] )
+    # add_operation( 'resized', imList, im)
     # ____________________________________________________
     # RGB -> gray
     gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
     im = gray
-    imList.append( ['gray',im.copy()] )
+    add_operation( 'gray', imList, im)
     # ____________________________________________________
     # adaptive image histogram equalization - create a CLAHE object (Arguments are optional).
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     cl1 = clahe.apply(im)
     im = cl1
-    imList.append( ['clahed',im.copy()] )
+    add_operation( 'clahed', imList, im)
     # ____________________________________________________
     # gaussian blur
     # blur = gaussIt(im,7)
@@ -224,12 +227,12 @@ def stepCV(frame, cTag):
     # ____________________________________________________
     # Threshing - to get binary image out of gray one
     im = inverte(im.copy())
-    imList.append( ['inverted',im.copy()] )
+    add_operation( 'inverted', imList, im)
     thresh = threshIT(im, 'otsu')
     im = thresh
-    imList.append( ['threshed',im.copy()] )
+    add_operation( 'thresholded', imList, im)
     im = inverte(im.copy())
-    imList.append( ['inverted again',im.copy()] )
+    add_operation( 'inverted again', imList, im)
     # ____________________________________________________
     # inversion
     # im = inverte(im.copy())
@@ -238,12 +241,12 @@ def stepCV(frame, cTag):
     killerBorder = 5
     killedBorder= imclearborder(im, killerBorder)
     im = killedBorder;
-    imList.append( ['killed border',im.copy()] )
+    add_operation( 'killed border', imList, im)
     a = 1
     killedBorder = cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
 
     im = killedBorder
-    imList.append( ['blacked border',im.copy()] )
+    add_operation( 'blacked border', imList, im)
     # ____________________________________________________
     # bwareaopen
     # delete too small groups of pixels - with contours - slow
@@ -257,37 +260,38 @@ def stepCV(frame, cTag):
     flooded = im.copy()
     floodIt(flooded, 255)
     im = flooded
-    imList.append( ['flooded with white',im.copy()] )
+    add_operation( 'flooded with white', imList, im)
     floodIt(flooded, 0)
     im = flooded
-    imList.append( ['flooded with black',im.copy()] )
+    add_operation( 'flooded with black', imList, im)
     # ____________________________________________________
     # findTags and put them into imTags list
     paired, imTags = findTags(im, cTag)
 
     # ____________________________________________________
     # create progress image
-    ims = []
-    # ims.append( [gray] )
-    ims.append( [cl1] )
-    # ims.append( [blur] )
-    ims.append( [thresh] )
-    ims.append( [killedBorder] )
-    ims.append( [flooded] )
-    ims.append( [paired] )
-
-    imWhole = fh.joinIm(ims, 1)
+    # ims = []
+    # # ims.append( [gray] )
+    # ims.append( [cl1] )
+    # # ims.append( [blur] )
+    # ims.append( [thresh] )
+    # ims.append( [killedBorder] )
+    # ims.append( [flooded] )
+    # ims.append( [paired] )
+    #
+    # imWhole = fh.joinIm(ims, 1)
     # ____________________________________________________
     # FPS
-    font = cv2.FONT_HERSHEY_COMPLEX_SMALL
-    col = 255
-    text = 'FPS = ?'
-    hw = (1,20)
-    cv2.putText(imWhole, text, hw , font, 1, 0, 5) # , cv2.LINE_AA )
-    cv2.putText(imWhole, text, hw, font, 1, col)
+    # font = cv2.FONT_HERSHEY_COMPLEX_SMALL
+    # col = 255
+    # text = 'FPS = ?'
+    # hw = (1,20)
+    # cv2.putText(imWhole, text, hw , font, 1, 0, 5) # , cv2.LINE_AA )
+    # cv2.putText(imWhole, text, hw, font, 1, col)
     # ____________________________________________________
-    return imWhole, imTags
+    # return imWhole, imTags
     # return imList, imTags
+    return gray,imTags
 
 def loopCV(cap):
     print("loopCV started")
