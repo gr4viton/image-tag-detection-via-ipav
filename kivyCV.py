@@ -224,10 +224,11 @@ class multicopterApp(App):
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     # redraw_capture() create one texture object - dont create every time!
-    # timeit individual steps and display on widgets
+
     # why is it so black?
-    #
+
     # step control to work
+    # timeit individual steps and display on widgets
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     def redraw_capture(self, dt):
         frame = self.capture_control.frame

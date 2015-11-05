@@ -49,19 +49,21 @@ def imclearborder(imgBW, radius):
                 break
 
     # create mask to delete (not touching the child contours insides)
-    mask = np.uint8( np.ones(imgBW.shape) )
+    mask = np.uint8( np.ones(imgBW.shape) + 254)
+
     for idx in cTouching:
         col = 0
         cv2.drawContours(mask, contours, idx, col, -1)
     for idx in cInsideTouching:
-        col = 1
+        col = 255
         cv2.drawContours(mask, contours, idx, col, -1)
 
     # mask2 = mask.copy()
     # cv2.dilate(mask,mask2)
 
     cv2.bitwise_and(mask, imgBW, imgBWcopy)
-    imgBWcopy = imgBWcopy * 255
+    # imgBWcopy = imgBWcopy * 255
+    imgBWcopy = imgBWcopy
     return imgBWcopy
 
 def findTags(imScene, cTagModel):
@@ -230,6 +232,9 @@ class StepControl():
             return imclearborder(im, width)
 
         def make_remove_frame(im, width = 5, color = 0):
+            # im_b = cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a,
+            #                           cv2.BORDER_CONSTANT, value=color)
+            # print(np.max(im_b))
             return cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a,
                                       cv2.BORDER_CONSTANT, value=color)
 
@@ -256,8 +261,8 @@ class StepControl():
         self.steps.append(Step('tresholded', make_otsu))
         self.steps.append(Step('border touch cleared', make_clear_border))
         self.steps.append(Step('removed frame', make_remove_frame))
-        self.steps.append(Step('flooded w/white', lambda im: make_flood(im, 255)))
-        self.steps.append(Step('flooded w/black', lambda im: make_flood(im, 0)))
+        self.steps.append(Step('flooded w/white', lambda im: make_flood(im.copy(), 255)))
+        self.steps.append(Step('flooded w/black', lambda im: make_flood(im.copy(), 0)))
 
 step_control = StepControl()
 
@@ -277,12 +282,8 @@ def stepCV(frame, cTag):
     # ____________________________________________________
     # findTags and put them into im_tags list
     paired, im_tags = findTags(im, cTag)
-    # ____________________________________________________
 
-    # ____________________________________________________
-    # return imWhole, im_tags
     return im_steps, im_tags
-    # return im_steps, im_tags
 
 def loopCV(cap):
     print("loopCV started")
