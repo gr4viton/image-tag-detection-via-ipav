@@ -13,6 +13,7 @@
     layout_steps: layout_steps
 #    img_steps: img_steps # temporal
     label_mean_exec_time: label_mean_exec_time
+    grid_img_tags: grid_img_tags
 
 #    ScrollView:
 #        Label:
@@ -126,10 +127,11 @@
     #                        size_hint_x: 1
 
             GridLayout:
+                id: grid_img_tags
                 cols: 1
                 size_hint_x: 0.2
                 margin: 1
-                color: .08,.16 , .24
+                color: 0.08, 0.16 , 0.24
                 padding: (2,2,2,2)
                 canvas.before:
                     Color:

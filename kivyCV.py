@@ -149,6 +149,13 @@ class StepWidgetControl():
                     [widget.update_texture(np.uint8(im_item[1][0].copy()))
                      for (im_item, widget) in zip(im_steps, self.layout_steps.children)]
 
+def rgb_to_str(rgb):
+    """Returns: string representation of RGB without alpha
+
+    Parameter rgb: the color object to display
+    Precondition: rgb is an RGB object"""
+    return '[ '+str(rgb[0])+', '+str(rgb[1])+', '+str(rgb[2])+' ]'
+
 class Multicopter(GridLayout):
     gl_left = ObjectProperty()
     gl_middle = ObjectProperty()
@@ -161,6 +168,8 @@ class Multicopter(GridLayout):
     layout_steps = ObjectProperty()
     # img_steps = ObjectProperty()
     label_mean_exec_time = ObjectProperty()
+    # img_tags_background = ObjectProperty((0.08, 0.16 , 0.24))
+    grid_img_tags = ObjectProperty()
 
     def __init__(self, capture_control, findtag_control, **kwargs):
         # make sure we aren't overriding any important functionality
@@ -169,7 +178,6 @@ class Multicopter(GridLayout):
         self.findtag_control = findtag_control
 
         self.step_widgets_control = StepWidgetControl(self.layout_steps)
-
 class multicopterApp(App):
     # frame = []
     # running_findtag = False
@@ -206,7 +214,9 @@ class multicopterApp(App):
         self.findtag_control = FindtagControl(self.capture_control)
         self.findtag_control.start_findtagging()
 
+
         self.root = root = Multicopter(self.capture_control, self.findtag_control)
+
         self.build_opencv()
 
         # self.capture_control.toggle_source_id() # take the second input source
@@ -235,6 +245,12 @@ class multicopterApp(App):
         if frame is not None:
             self.root.img_webcam.texture = convert_to_texture(frame)
 
+    def set_img_tags(self, found = False):
+        if(found == False):
+            self.root.grid_img_tags.color = (.08, .16 , .24)
+        else:
+            self.root.grid_img_tags.color = (.08, .96 , .24)
+
     def redraw_findtag(self, dt):
         # im_steps = self.findtag_control.im_steps
         # if im_steps is not None:
@@ -255,11 +271,15 @@ class multicopterApp(App):
             self.root.txt_numFound.text = str(len(imTags))
 
             if len(imTags) > 0:
+                self.set_img_tags(True)
                 imAllTags = fh.joinIm( [[im] for im in imTags], 1 )
                 if len(imAllTags.shape) == 2:
                     imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)
                 self.root.img_tags.texture = convert_to_texture( imAllTags.copy() )
-
+            else:
+                self.set_img_tags(False)
+        else:
+            self.set_img_tags(False)
 
     def on_stop(self):
         print("Stopping capture")

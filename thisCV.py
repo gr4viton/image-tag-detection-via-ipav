@@ -242,11 +242,13 @@ class StepControl():
             return (255 - im)
 
         def make_flood(im, color = 0):
+            # im = im.copy()
+            im = im.copy()
             h, w = im.shape[:2]
             a = 2
             mask = np.zeros((h + a, w + a), np.uint8)
             mask[:] = 0
-            # seed = None
+            #seed = None
             seed = (0,0)
             rect = 4
             # rect = 8
@@ -261,8 +263,8 @@ class StepControl():
         self.steps.append(Step('tresholded', make_otsu))
         self.steps.append(Step('border touch cleared', make_clear_border))
         self.steps.append(Step('removed frame', make_remove_frame))
-        self.steps.append(Step('flooded w/white', lambda im: make_flood(im.copy(), 255)))
-        self.steps.append(Step('flooded w/black', lambda im: make_flood(im.copy(), 0)))
+        self.steps.append(Step('flooded w/white', lambda im: make_flood(im, 255)))
+        self.steps.append(Step('flooded w/black', lambda im: make_flood(im, 0)))
 
 step_control = StepControl()
 
@@ -281,7 +283,7 @@ def stepCV(frame, cTag):
 
     # ____________________________________________________
     # findTags and put them into im_tags list
-    paired, im_tags = findTags(im, cTag)
+    paired, im_tags = findTags(im.copy(), cTag)
 
     return im_steps, im_tags
 
