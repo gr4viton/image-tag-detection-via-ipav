@@ -167,9 +167,11 @@ class Multicopter(GridLayout):
     sla_tags = ObjectProperty()
     layout_steps = ObjectProperty()
     # img_steps = ObjectProperty()
-    label_mean_exec_time = ObjectProperty()
+    label_mean_exec_time = StringProperty('??')
+    label_mean_exec_time_last = StringProperty('??')
     # img_tags_background = ObjectProperty((0.08, 0.16 , 0.24))
     grid_img_tags = ObjectProperty()
+    lb_webcam_resolution = StringProperty('? x ? x ?')
 
     def __init__(self, capture_control, findtag_control, **kwargs):
         # make sure we aren't overriding any important functionality
@@ -242,6 +244,8 @@ class multicopterApp(App):
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     def redraw_capture(self, dt):
         frame = self.capture_control.frame
+        self.root.lb_webcam_resolution = str(frame.shape)
+
         if frame is not None:
             self.root.img_webcam.texture = convert_to_texture(frame)
 
@@ -260,11 +264,11 @@ class multicopterApp(App):
         self.root.step_widgets_control.update_layout_steps(im_steps)
         # self.root.update_layout_steps(im_steps)
 
+
         if len(self.findtag_control.execution_time) > 0:
-            self.root.label_mean_exec_time.text = str(
-                str(np.round(self.findtag_control.execution_time[-1], 5) * 1000) + "\n" +
-                str(np.round(self.findtag_control.mean_execution_time, 5) * 1000)
-                )
+            self.root.label_mean_exec_time = str(np.round(self.findtag_control.execution_time[-1], 5) * 1000)
+            self.root.label_mean_exec_time_last = str(np.round(self.findtag_control.mean_execution_time, 5) * 1000)
+
         imTags = self.findtag_control.im_tags
 
         if imTags is not None:
