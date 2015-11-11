@@ -20,6 +20,9 @@ from kivy.config import Config
 
 import cv2
 import numpy as np
+# import sys
+import threading
+import time
 
 import findHomeography as fh
 from thisCV import *
@@ -58,7 +61,7 @@ class StepWidget(GridLayout):
         # self.layout_steps = kwargs['parent']
         self.name = ''
         self.drawing = True
-        self.texture = Texture.create(size = (10,10), colorfmt='bgr')
+        self.texture = Texture.create(size = (42,42), colorfmt='bgr')
         self.name = 'default name'
         # self.kivy_image = ImageButton(self.toggle_drawing)
         # self.kivy_image = ImageButton()
@@ -75,6 +78,7 @@ class StepWidget(GridLayout):
         print('Recreated widget:',name,'\nwith dimensions:',cv_image.shape)
 
     def update_texture(self, im):
+        # print(im.shape)
         if self.drawing: # called only if intended to draw
             self.update_texture_from_rgb(fh.colorify(im))
 
@@ -82,6 +86,7 @@ class StepWidget(GridLayout):
         buf1 = cv2.flip(im_rgb, 0)
         buf = buf1.tostring()
         self.texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
+        # print(im_rgb.shape)
         self.kivy_image.texture = self.texture
 
     def set_drawing(self, value):
@@ -118,8 +123,8 @@ class StepWidgetControl():
         elif command == 'none':
             [widget.set_drawing(False) for widget in self.layout_steps.children]
 
-    def layout_steps_add_widgets(self,im_list):
-        diff = len(im_list) - len(self.layout_steps.children)
+    def layout_steps_add_widgets(self, im_steps):
+        diff = len(im_steps) - len(self.layout_steps.children)
         if diff > 0: # create widgets
             for num in range(0, np.abs(diff)):
                 self.layout_steps.add_widget(StepWidget())
@@ -130,9 +135,9 @@ class StepWidgetControl():
                 print('removed widget')
 
         [widget.recreate_widget(np.uint8(im_item[1][0]), im_item[0])
-         for (widget, im_item) in zip(self.layout_steps.children, im_list)]
+         for (widget, im_item) in zip(self.layout_steps.children, im_steps)]
 
-    def update_layout_steps(self,im_steps):
+    def update_layout_steps(self, im_steps):
 
         if im_steps is not None:
             # im_steps = [im_steps[1],im_steps[1]]
@@ -189,12 +194,22 @@ class multicopterApp(App):
         self.capture_control = CaptureControl()
         self.capture_control.start_capturing()
 
+        minHeight = 50
+        print('Captured frame with dimensions',self.capture_control.frame.shape,
+              '. Waiting until the heighth is greater than', minHeight, 'px')
+        while self.capture_control.frame.shape[0] < minHeight:
+            pass
+        print('Captured frame with dimensions',self.capture_control.frame.shape,
+              '. Continuing with program execution.')
+        # time.sleep(0.5)
+
         self.findtag_control = FindtagControl(self.capture_control)
         self.findtag_control.start_findtagging()
 
         self.root = root = Multicopter(self.capture_control, self.findtag_control)
         self.build_opencv()
-        self.capture_control.toggle_source_id()
+
+        # self.capture_control.toggle_source_id() # take the second input source
         return root
 
     def build_opencv(self):
@@ -207,6 +222,13 @@ class multicopterApp(App):
         Clock.schedule_interval(self.redraw_findtag, self.fps_findtag )
         print('Scheduled redraw_findtag with fps = ', 1/self.fps_findtag)
 
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # redraw_capture() create one texture object - dont create every time!
+    # timeit individual steps and display on widgets
+    # why is it so black?
+    #
+    # step control to work
+    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     def redraw_capture(self, dt):
         frame = self.capture_control.frame
         if frame is not None:

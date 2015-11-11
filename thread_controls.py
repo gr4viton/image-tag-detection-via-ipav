@@ -122,7 +122,7 @@ class FindtagControl():
         # time.sleep(0.0001)
 
 
-    def update_findtag_gui(self,frame, tag_model, running_findtag):
+    def update_findtag_gui(self, frame, tag_model, running_findtag):
 
         while True:
             if running_findtag:
@@ -172,10 +172,12 @@ class CaptureControl():
         while try_next:
             self.source_id += 1
             self.capture.open(self.source_id)
+
             if self.capture.isOpened() != True:
                 print('Cannot open capture source_id ', self.source_id)
                 self.source_id = -1
                 continue
+
             ret, frame = self.capture.read()
             if ret == False:
                 print('Source cannot be read from, source_id ', self.source_id)

@@ -45,7 +45,7 @@ def imclearborder(imgBW, radius):
                 q = hierarchy[0][idx][2] # first child index
                 while q != -1:
                     cInsideTouching.append(q)
-                    q = hierarchy[0,q,0] # next
+                    q = hierarchy[0, q, 0] # next
                 break
 
     # create mask to delete (not touching the child contours insides)
@@ -180,9 +180,6 @@ def add_text(im, text, col = 255, hw = (1, 20)):
     cv2.putText(im, text, hw , font, 1, 0, 5)
     cv2.putText(im, text, hw, font, 1, col)
 
-def add_operation(operation_name, im_steps, im):
-    return im_steps.insert(0, [operation_name, [im] ] )
-
 class Step():
 
     def __init__(self, name, function):
@@ -261,25 +258,22 @@ class StepControl():
         self.steps.append(Step('removed frame', make_remove_frame))
         self.steps.append(Step('flooded w/white', lambda im: make_flood(im, 255)))
         self.steps.append(Step('flooded w/black', lambda im: make_flood(im, 0)))
-#
-# flooded = im.copy()
-#         flood_it(flooded, 255)
-#     im = flooded
-#     add_operation( 'flooded with white', im_steps, im)
-#
-#     flood_it(flooded, 0)
-#     im = flooded
-#     add_operation( 'flooded with black', im_steps, im)
-#
+
 step_control = StepControl()
+
+def add_operation(operation_name, im_steps, im):
+    return im_steps.insert(0, [operation_name, [im]] )
 
 def stepCV(frame, cTag):
     im_steps = []
     a = 0.5
     im = cv2.resize(frame, (0, 0), fx=a, fy=a)
+
     for step in step_control.steps:
         im = step.function(im)
         add_operation( step.name, im_steps, im)
+        # print('hehe',im.shape)
+
     # ____________________________________________________
     # findTags and put them into im_tags list
     paired, im_tags = findTags(im, cTag)
