@@ -221,10 +221,11 @@ class multicopterApp(App):
         self.root.step_widgets_control.update_layout_steps(im_steps)
         # self.root.update_layout_steps(im_steps)
 
-        self.root.label_mean_exec_time.text = str(
-            str(np.round(self.findtag_control.execution_time[-1], 5) * 1000) + "\n" +
-            str(np.round(self.findtag_control.mean_execution_time, 5) * 1000)
-            )
+        if len(self.findtag_control.execution_time) > 0:
+            self.root.label_mean_exec_time.text = str(
+                str(np.round(self.findtag_control.execution_time[-1], 5) * 1000) + "\n" +
+                str(np.round(self.findtag_control.mean_execution_time, 5) * 1000)
+                )
         imTags = self.findtag_control.im_tags
 
         if imTags is not None:

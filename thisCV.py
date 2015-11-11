@@ -130,8 +130,8 @@ def bwareaopen(imgBW, areaPixels,col = 0):
             cv2.drawContours(imgBWcopy, contours, idx, col, -1)
     return imgBWcopy
 
-def inverte(im):
-    return (255 - im)
+# def inverte(im):
+#     return (255 - im)
 
 def threshIT(im, type):
     ## THRESH
@@ -179,24 +179,24 @@ def threshIT(im, type):
         ret, otsu = cv2.threshold(im, 0, 255, cv2.THRESH_OTSU)
         return otsu
 
-def gaussIt(im,a):
-    return cv2.GaussianBlur(im, (a, a), 0)
-
-def blurIt(im,a):
-#     a = 75
-    return cv2.bilateralFilter(im,9,a,a)
-
-def flood_it(im,newVal):
-    h, w = im.shape[:2]
-    # mask = np.zeros((h + 2, w + 2), np.uint8)
-    a = 2
-    mask = np.zeros((h + a, w + a), np.uint8)
-    mask[:] = 0
-    # seed = None
-    seed = (0,0)
-    rect = 4
-    # rect = 8
-    cv2.floodFill(im, mask, seed, newVal, 0, 255, rect)
+# def gaussIt(im,a):
+#     return cv2.GaussianBlur(im, (a, a), 0)
+#
+# def blurIt(im,a):
+# #     a = 75
+#     return cv2.bilateralFilter(im,9,a,a)
+#
+# def flood_it(im,newVal):
+#     h, w = im.shape[:2]
+#     # mask = np.zeros((h + 2, w + 2), np.uint8)
+#     a = 2
+#     mask = np.zeros((h + a, w + a), np.uint8)
+#     mask[:] = 0
+#     # seed = None
+#     seed = (0,0)
+#     rect = 4
+#     # rect = 8
+#     cv2.floodFill(im, mask, seed, newVal, 0, 255, rect)
 
 def add_operation(operation_name, im_steps, im):
     return im_steps.insert(0, [operation_name, [im] ] )
@@ -233,8 +233,62 @@ class StepControl():
         def make_gray(im):
             return cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
 
-        self.steps.append(Step('gray', make_gray))
+        clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(4, 4))
+        def make_clahe(im):
+            return clahe.apply(im)
 
+        a = 75
+        def make_blur(im, a=75):
+            return cv2.bilateralFilter(im,9,a,a)
+        a = 5
+        def make_gauss(im, a=5):
+            return cv2.GaussianBlur(im, (a, a), 0)
+
+        def make_otsu(im):
+            return threshIT(im,'otsu').copy()
+
+        def make_clear_border(im, width = 5):
+            return imclearborder(im, width)
+
+        def make_remove_frame(im, width = 5, color = 0):
+            return cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a,
+                                      cv2.BORDER_CONSTANT, value=color)
+
+        def make_invert(im):
+            return (255 - im)
+
+        def make_flood(im, color = 0):
+            h, w = im.shape[:2]
+            a = 2
+            mask = np.zeros((h + a, w + a), np.uint8)
+            mask[:] = 0
+            # seed = None
+            seed = (0,0)
+            rect = 4
+            # rect = 8
+            cv2.floodFill(im, mask, seed, color, 0, 255, rect)
+            return im
+
+        self.steps.append(Step('gray', make_gray))
+        self.steps.append(Step('clahed', make_clahe))
+        # self.steps.append(Step('blurred', make_blur))
+        # self.steps.append(Step('gaussed', make_gauss))
+
+        self.steps.append(Step('tresholded', make_otsu))
+        self.steps.append(Step('border touch cleared', make_clear_border))
+        self.steps.append(Step('removed frame', make_remove_frame))
+        self.steps.append(Step('flooded w/white', lambda im: make_flood(im, 255)))
+        self.steps.append(Step('flooded w/black', lambda im: make_flood(im, 0)))
+#
+# flooded = im.copy()
+#         flood_it(flooded, 255)
+#     im = flooded
+#     add_operation( 'flooded with white', im_steps, im)
+#
+#     flood_it(flooded, 0)
+#     im = flooded
+#     add_operation( 'flooded with black', im_steps, im)
+#
 step_control = StepControl()
 
 def stepCV(frame, cTag):
@@ -245,18 +299,19 @@ def stepCV(frame, cTag):
     # add_operation( 'resized', im_steps, im)
     # ____________________________________________________
     # RGB -> gray
-    # for step in step_control.steps:
-    #     im = step.function(im)
-    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-    im = gray
-    add_operation( 'gray', im_steps, im)
+    for step in step_control.steps:
+        im = step.function(im)
+        add_operation( step.name, im_steps, im)
+    # gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    # im = gray
+    # add_operation( 'gray', im_steps, im)
     # ____________________________________________________
     # adaptive image histogram equalization - create a CLAHE object (Arguments are optional).
     # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(4, 4))
-    cl1 = clahe.apply(im)
-    im = cl1
-    add_operation( 'clahed', im_steps, im)
+    # clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(4, 4))
+    # cl1 = clahe.apply(im)
+    # im = cl1
+    # add_operation( 'clahed', im_steps, im)
     # ____________________________________________________
     # gaussian blur
     # blur = gaussIt(im,7)
@@ -267,9 +322,9 @@ def stepCV(frame, cTag):
     # Threshing - to get binary image out of gray one
     # im = inverte(im.copy())
     # add_operation( 'inverted', im_steps, im)
-    thresh = threshIT(im, 'otsu')
-    im = thresh
-    add_operation( 'thresholded', im_steps, im)
+    # thresh = threshIT(im, 'otsu')
+    # im = thresh
+    # add_operation( 'thresholded', im_steps, im)
     # im = inverte(im.copy())
     # add_operation( 'inverted again', im_steps, im)
     # ____________________________________________________
@@ -277,15 +332,15 @@ def stepCV(frame, cTag):
     # im = inverte(im.copy())
     # ____________________________________________________
     # imclearborder - maskes out all contours which are touching the border
-    killer_border_width = 5
-    border_touch_cleared = imclearborder(im, killer_border_width)
-    im = border_touch_cleared
-    add_operation( 'border touch cleared', im_steps, im)
-    a = 1
-    removed_frame = cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
-
-    im = removed_frame
-    add_operation( 'removed frame', im_steps, im)
+    # killer_border_width = 5
+    # border_touch_cleared = imclearborder(im, killer_border_width)
+    # im = border_touch_cleared
+    # add_operation( 'border touch cleared', im_steps, im)
+    # a = 1
+    # removed_frame = cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
+    #
+    # im = removed_frame
+    # add_operation( 'removed frame', im_steps, im)
     # ____________________________________________________
     # bwareaopen
     # delete too small groups of pixels - with contours - slow
@@ -296,14 +351,14 @@ def stepCV(frame, cTag):
     # ____________________________________________________
     # imfill
     # flood
-    flooded = im.copy()
-    flood_it(flooded, 255)
-    im = flooded
-    add_operation( 'flooded with white', im_steps, im)
-
-    flood_it(flooded, 0)
-    im = flooded
-    add_operation( 'flooded with black', im_steps, im)
+    # flooded = im.copy()
+    # flood_it(flooded, 255)
+    # im = flooded
+    # add_operation( 'flooded with white', im_steps, im)
+    #
+    # flood_it(flooded, 0)
+    # im = flooded
+    # add_operation( 'flooded with black', im_steps, im)
     # ____________________________________________________
     # findTags and put them into im_tags list
     paired, im_tags = findTags(im, cTag)
