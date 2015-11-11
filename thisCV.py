@@ -78,7 +78,6 @@ def findTags(imScene, cTagModel):
 
         cnt = contours[q]
 
-
         # slice out imTagInScene
         mask = np.uint8( np.zeros(imScene.shape) )
         col = 1
@@ -130,9 +129,6 @@ def bwareaopen(imgBW, areaPixels,col = 0):
             cv2.drawContours(imgBWcopy, contours, idx, col, -1)
     return imgBWcopy
 
-# def inverte(im):
-#     return (255 - im)
-
 def threshIT(im, type):
     ## THRESH
     if type == cv2.THRESH_BINARY_INV or type == 1:
@@ -179,24 +175,10 @@ def threshIT(im, type):
         ret, otsu = cv2.threshold(im, 0, 255, cv2.THRESH_OTSU)
         return otsu
 
-# def gaussIt(im,a):
-#     return cv2.GaussianBlur(im, (a, a), 0)
-#
-# def blurIt(im,a):
-# #     a = 75
-#     return cv2.bilateralFilter(im,9,a,a)
-#
-# def flood_it(im,newVal):
-#     h, w = im.shape[:2]
-#     # mask = np.zeros((h + 2, w + 2), np.uint8)
-#     a = 2
-#     mask = np.zeros((h + a, w + a), np.uint8)
-#     mask[:] = 0
-#     # seed = None
-#     seed = (0,0)
-#     rect = 4
-#     # rect = 8
-#     cv2.floodFill(im, mask, seed, newVal, 0, 255, rect)
+def add_text(im, text, col = 255, hw = (1, 20)):
+    font = cv2.FONT_HERSHEY_COMPLEX_SMALL
+    cv2.putText(im, text, hw , font, 1, 0, 5)
+    cv2.putText(im, text, hw, font, 1, col)
 
 def add_operation(operation_name, im_steps, im):
     return im_steps.insert(0, [operation_name, [im] ] )
@@ -295,94 +277,14 @@ def stepCV(frame, cTag):
     im_steps = []
     a = 0.5
     im = cv2.resize(frame, (0, 0), fx=a, fy=a)
-    # im = frame
-    # add_operation( 'resized', im_steps, im)
-    # ____________________________________________________
-    # RGB -> gray
     for step in step_control.steps:
         im = step.function(im)
         add_operation( step.name, im_steps, im)
-    # gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-    # im = gray
-    # add_operation( 'gray', im_steps, im)
-    # ____________________________________________________
-    # adaptive image histogram equalization - create a CLAHE object (Arguments are optional).
-    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    # clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(4, 4))
-    # cl1 = clahe.apply(im)
-    # im = cl1
-    # add_operation( 'clahed', im_steps, im)
-    # ____________________________________________________
-    # gaussian blur
-    # blur = gaussIt(im,7)
-    # blur = blurIt(im,75)
-    # im = blur
-    # imDict.update( {'blurred',im} )
-    # ____________________________________________________
-    # Threshing - to get binary image out of gray one
-    # im = inverte(im.copy())
-    # add_operation( 'inverted', im_steps, im)
-    # thresh = threshIT(im, 'otsu')
-    # im = thresh
-    # add_operation( 'thresholded', im_steps, im)
-    # im = inverte(im.copy())
-    # add_operation( 'inverted again', im_steps, im)
-    # ____________________________________________________
-    # inversion
-    # im = inverte(im.copy())
-    # ____________________________________________________
-    # imclearborder - maskes out all contours which are touching the border
-    # killer_border_width = 5
-    # border_touch_cleared = imclearborder(im, killer_border_width)
-    # im = border_touch_cleared
-    # add_operation( 'border touch cleared', im_steps, im)
-    # a = 1
-    # removed_frame = cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a, cv2.BORDER_CONSTANT, value=0)
-    #
-    # im = removed_frame
-    # add_operation( 'removed frame', im_steps, im)
-    # ____________________________________________________
-    # bwareaopen
-    # delete too small groups of pixels - with contours - slow
-    # col = 64
-    # opened = bwareaopen(im, 5*5, col)
-    # im = opened
-
-    # ____________________________________________________
-    # imfill
-    # flood
-    # flooded = im.copy()
-    # flood_it(flooded, 255)
-    # im = flooded
-    # add_operation( 'flooded with white', im_steps, im)
-    #
-    # flood_it(flooded, 0)
-    # im = flooded
-    # add_operation( 'flooded with black', im_steps, im)
     # ____________________________________________________
     # findTags and put them into im_tags list
     paired, im_tags = findTags(im, cTag)
+    # ____________________________________________________
 
-    # ____________________________________________________
-    # create progress image
-    # ims = []
-    # # ims.append( [gray] )
-    # ims.append( [cl1] )
-    # # ims.append( [blur] )
-    # ims.append( [thresh] )
-    # ims.append( [killed_border] )
-    # ims.append( [flooded] )
-    # ims.append( [paired] )
-    # #
-    # imWhole = fh.joinIm(ims, 1)
-    # ____________________________________________________
-    # FPS
-    # font = cv2.FONT_HERSHEY_COMPLEX_SMALL
-    # col = 255
-    # text = 'FPS = ?'
-    # hw = (1,20)
-    # cv2.putText(imWhole, text, hw , font, 1, 0, 5) # , cv2.LINE_AA )
-    # cv2.putText(imWhole, text, hw, font, 1, col)
     # ____________________________________________________
     # return imWhole, im_tags
     return im_steps, im_tags
