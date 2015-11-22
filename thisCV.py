@@ -285,10 +285,11 @@ step_control = StepControl()
 def add_operation(operation_name, im_steps, im):
     return im_steps.insert(0, [operation_name, [im]] )
 
-def stepCV(frame, cTag):
+def stepCV(frame, cTag, div):
     im_steps = []
-    a = 0.5
-    im = cv2.resize(frame, (0, 0), fx=a, fy=a)
+    # a = 0.5
+    im = cv2.resize(frame, (0, 0), fx=div, fy=div)
+    # im = frame
 
     step_control.run_all(im)
     # for step in step_control.steps:

@@ -62,13 +62,16 @@ class StepWidget(GridLayout):
         # self.layout_steps = kwargs['parent']
         self.name = ''
         self.drawing = True
-        self.texture = Texture.create(size = (42,42), colorfmt='bgr')
+        init_shape = (0, 0)
+        self.texture = Texture.create(size = init_shape, colorfmt='bgr')
+        self.texture_shape = init_shape
         self.name = 'default name'
         # self.kivy_image = ImageButton(self.toggle_drawing)
         # self.kivy_image = ImageButton()
         # self.add_widget(self.kivy_image)
 
     def recreate_texture(self, cv_image):
+        self.texture_shape = cv_image.shape
         self.texture = Texture.create(
             size=(cv_image.shape[1], cv_image.shape[0]), colorfmt='bgr')
         self.update_texture(cv_image)
@@ -82,8 +85,10 @@ class StepWidget(GridLayout):
         self.update_stat(step)
         if self.drawing: # called only if intended to draw
             im = np.uint8(step.ret.copy())
-            self.update_texture(im)
-
+            if self.texture_shape != im.shape:
+                self.recreate_texture(im)
+            else:
+                self.update_texture(im)
 
     def update_stat(self, step):
         self.stat_label.text = step.str_mean_execution_time()
@@ -91,7 +96,7 @@ class StepWidget(GridLayout):
     def update_texture(self, im):
         self.update_texture_from_rgb(fh.colorify(im))
 
-    def update_texture_from_rgb(self,im_rgb):
+    def update_texture_from_rgb(self, im_rgb):
         buf1 = cv2.flip(im_rgb, 0)
         buf = buf1.tostring()
         self.texture.blit_buffer(buf, colorfmt='bgr', bufferfmt='ubyte')
