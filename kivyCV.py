@@ -53,6 +53,7 @@ class StepWidget(GridLayout):
     name = StringProperty()
     drawing = ObjectProperty('down')
     kivy_image = ObjectProperty()
+    stat_label = ObjectProperty()
     toggle_object = ObjectProperty()
     # layout_steps_height = NumericProperty(1600)
 
@@ -77,10 +78,18 @@ class StepWidget(GridLayout):
         self.name = name
         print('Recreated widget:',name,'\nwith dimensions:',cv_image.shape)
 
-    def update_texture(self, im):
-        # print(im.shape)
+    def update_widget(self, step):
+        self.update_stat(step)
         if self.drawing: # called only if intended to draw
-            self.update_texture_from_rgb(fh.colorify(im))
+            im = np.uint8(step.ret.copy())
+            self.update_texture(im)
+
+
+    def update_stat(self, step):
+        self.stat_label.text = step.str_mean_execution_time()
+
+    def update_texture(self, im):
+        self.update_texture_from_rgb(fh.colorify(im))
 
     def update_texture_from_rgb(self,im_rgb):
         buf1 = cv2.flip(im_rgb, 0)
@@ -143,7 +152,7 @@ class StepWidgetControl():
             if len(step_control.steps) != len(self.layout_steps.children):
                 self.layout_steps_add_widgets(step_control)
             else:
-                [widget.update_texture(np.uint8(step.ret.copy()))
+                [widget.update_widget(step)
                  for (step, widget)
                  in zip(step_control.steps, self.layout_steps.children)]
 

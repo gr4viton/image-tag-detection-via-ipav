@@ -207,6 +207,9 @@ class Step():
             self.execution_times.append(tim)
         self.mean_execution_time = np.sum(self.execution_times) / len(self.execution_times)
 
+    def str_mean_execution_time(self):
+        return '{0:.2f} ms'.format(round(self.mean_execution_time * 1000,2))
+
 class StepControl():
 
     def __init__(self):
