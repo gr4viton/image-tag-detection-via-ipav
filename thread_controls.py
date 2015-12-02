@@ -66,6 +66,7 @@ class FindtagControl():
     Shared class to control findtag algorythm execution
     """
 
+
     step_control = LockedNumpyArray()
     im_tags = LockedNumpyArray()
     findtagging = LockedValue(False)
@@ -79,6 +80,7 @@ class FindtagControl():
         self.execution_time_len = 50
         self.execution_time = []
         self.resolution_div = 0.5
+        self._step_control = StepControl(self.resolution_div, self.model_tag)
 
     def init_findtag(self):
         self.model_tag = fh.read_model_tag('2L')
@@ -110,16 +112,14 @@ class FindtagControl():
             self.findtag()
 
     def findtag(self):
-        # start = timeit.timeit()
         start = time.time()
-        im_steps, im_tags = stepCV(self.capture_control.frame, self.model_tag, self.resolution_div )
-        # end = timeit.timeit()
+        self._step_control.step_all(self.capture_control.frame, self.model_tag, self.resolution_div )
         end = time.time()
         self.add_exec_times(end-start)
-        # print(end - start)
-        # print(im_gray.shape)
-        self.step_control = im_steps
-        self.im_tags = im_tags
+
+        # not thread safe
+        self.step_control = self._step_control
+        self.im_tags = self._step_control.im_tags
 
         # here raise an event for the conversion and redrawing to happen
         # time.sleep(0.0001)

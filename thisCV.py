@@ -66,14 +66,14 @@ def imclearborder(imgBW, radius):
     imgBWcopy = imgBWcopy
     return imgBWcopy
 
-def findTags(imScene, cTagModel):
+def findTags(im_scene, model_tag):
 
     # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
-    _, contours, hierarchy = cv2.findContours(imScene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    _, contours, hierarchy = cv2.findContours(im_scene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
     imTags = [];
 
     cSeenTags = []
-    imSceneWithDots = imScene.copy()
+    imSceneWithDots = im_scene.copy()
 
     # find bounding boxes etc
     for q in np.arange(len(contours)):
@@ -81,12 +81,12 @@ def findTags(imScene, cTagModel):
         cnt = contours[q]
 
         # slice out imTagInScene
-        mask = np.uint8( np.zeros(imScene.shape) )
+        mask = np.uint8( np.zeros(im_scene.shape) )
         col = 1
         cv2.drawContours(mask, contours, q, col, -1)
 
-        imTagInScene = np.uint8( np.zeros(imScene.shape) )
-        cv2.bitwise_and(mask, imScene.copy(), imTagInScene)
+        imTagInScene = np.uint8( np.zeros(im_scene.shape) )
+        cv2.bitwise_and(mask, im_scene.copy(), imTagInScene)
         imTagInScene = imTagInScene * 255
 
         # # find out euler number
@@ -108,10 +108,10 @@ def findTags(imScene, cTagModel):
 
             if cSeenTag.addExternalContour(cnt) != 0:
                 continue
-            if cSeenTag.findWarpMatrix(cTagModel) != 0:
+            if cSeenTag.findWarpMatrix(model_tag) != 0:
                 continue
 
-            imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)
+            imTagRecreated = cSeenTag.drawSceneWarpedToTag(model_tag)
             fh.drawCentroid(imSceneWithDots, cnt, 180) # DRAW centroid
 
             imTags.append(imTagRecreated )
@@ -212,9 +212,15 @@ class Step():
 
 class StepControl():
 
-    def __init__(self):
-        self.steps = []
 
+
+    def __init__(self, div, model_tag):
+        self.steps = []
+        self.div = div
+        self.model_tag = model_tag
+
+        def make_resize(im):
+            return cv2.resize(im, (0, 0), fx=self.div, fy=self.div)
         def make_gray(im):
             return cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
 
@@ -259,16 +265,24 @@ class StepControl():
             cv2.floodFill(im, mask, seed, color, 0, 255, rect)
             return im
 
+        def make_find_tags(im):
+            imSceneWithDots, imTags = findTags(im.copy(), self.model_tag)
+            self.im_tags = imTags
+            return imSceneWithDots
+
         self.steps.append(Step('gray', make_gray))
         # self.steps.append(Step('clahed', make_clahe))
         # self.steps.append(Step('blurred', make_blur))
-        # self.steps.append(Step('gaussed', make_gauss))
+        self.steps.append(Step('gaussed', make_gauss))
+
+        self.steps.append(Step('resize', make_resize))
 
         self.steps.append(Step('tresholded', make_otsu))
         self.steps.append(Step('border touch cleared', make_clear_border))
         self.steps.append(Step('removed frame', make_remove_frame))
         self.steps.append(Step('flooded w/white', lambda im: make_flood(im, 255)))
         self.steps.append(Step('flooded w/black', lambda im: make_flood(im, 0)))
+        self.steps.append(Step('findTags', make_find_tags))
 
     def add_operation(self):
         pass
@@ -278,43 +292,30 @@ class StepControl():
             im = step.run(im)
         self.ret = im
 
+    def step_all(self, im, cTag, div):
+        self.div = div
+        self.run_all(im)
+        # ____________________________________________________
+        # findTags and put them into im_tags list
+        # paired, im_tags = findTags(self.ret.copy(), cTag)
+        # self.im_tags = self.ret
 
-
-step_control = StepControl()
 
 def add_operation(operation_name, im_steps, im):
     return im_steps.insert(0, [operation_name, [im]] )
 
-def stepCV(frame, cTag, div):
-    im_steps = []
-    # a = 0.5
-    im = cv2.resize(frame, (0, 0), fx=div, fy=div)
-    # im = frame
-
-    step_control.run_all(im)
-    # for step in step_control.steps:
-    #     im = step.function(im)
-    #     add_operation( step.name, step_control, im)
-    #     # print('hehe',im.shape)
-
-    # ____________________________________________________
-    # findTags and put them into im_tags list
-    paired, im_tags = findTags(step_control.ret.copy(), cTag)
-
-    return step_control, im_tags
-
-def loopCV(cap):
-    print("loopCV started")
-    while (True):
-        im = stepCV(cap)
-        cv2.imshow('image', im)
-        # How to end the loop
-        k = cv2.waitKey(30) & 0xff
-        if k == ord('q'):
-            break
-        if k == 27:
-            break
-        cv2.destroyAllWindows() # When everything done, release the capture
+# def loopCV(cap):
+#     print("loopCV started")
+#     while (True):
+#         im = stepCV(cap)
+#         cv2.imshow('image', im)
+#         # How to end the loop
+#         k = cv2.waitKey(30) & 0xff
+#         if k == ord('q'):
+#             break
+#         if k == 27:
+#             break
+#         cv2.destroyAllWindows() # When everything done, release the capture
 
 def waitKeyExit():
     while True:
