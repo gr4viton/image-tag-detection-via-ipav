@@ -46,7 +46,8 @@ class LockedNumpyArray(object):
     def __get__(self, obj, objtype):
         self.lock.acquire()
         if self.val != None:
-            ret_val = self.val.copy()
+            # ret_val = self.val.copy()
+            ret_val = self.val
         else:
             ret_val = None
         self.lock.release()
@@ -56,7 +57,8 @@ class LockedNumpyArray(object):
     def __set__(self, obj, val):
         self.lock.acquire()
         # print('setting', val)
-        self.val = val.copy() # ????????????????????????????????????????? do i need a copy??
+        # self.val = val.copy() # ????????????????????????????????????????? do i need a copy??
+        self.val = val
         self.lock.release()
 
 class FindtagControl():
@@ -64,7 +66,7 @@ class FindtagControl():
     Shared class to control findtag algorythm execution
     """
 
-    im_steps = LockedNumpyArray()
+    step_control = LockedNumpyArray()
     im_tags = LockedNumpyArray()
     findtagging = LockedValue(False)
     model_tag = LockedValue()
@@ -115,7 +117,7 @@ class FindtagControl():
         self.add_exec_times(end-start)
         # print(end - start)
         # print(im_gray.shape)
-        self.im_steps = im_steps
+        self.step_control = im_steps
         self.im_tags = im_tags
 
         # here raise an event for the conversion and redrawing to happen

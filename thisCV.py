@@ -147,30 +147,30 @@ def threshIT(im, type):
 
     ## OTSU
     elif type == 'otsu' or type == 4:
-        # find normalized_histogram, and its cumulative distribution function
-        hist = cv2.calcHist([im], [0], None, [256], [0, 256])
-        hist_norm = hist.ravel() / hist.max()
-        Q = hist_norm.cumsum()
-
-        bins = np.arange(256)
-
-        fn_min = np.inf
-        thresh = -1
-
-        for i in range(1, 256):
-            p1, p2 = np.hsplit(hist_norm, [i])  # probabilities
-            q1, q2 = Q[i], Q[255] - Q[i]  # cum sum of classes
-            b1, b2 = np.hsplit(bins, [i])  # weights
-
-            # finding means and variances
-            m1, m2 = np.sum(p1 * b1) / q1, np.sum(p2 * b2) / q2
-            v1, v2 = np.sum(((b1 - m1) ** 2) * p1) / q1, np.sum(((b2 - m2) ** 2) * p2) / q2
-
-            # calculates the minimization function
-            fn = v1 * q1 + v2 * q2
-            if fn < fn_min:
-                fn_min = fn
-                thresh = i
+        # # find normalized_histogram, and its cumulative distribution function
+        # hist = cv2.calcHist([im], [0], None, [256], [0, 256])
+        # hist_norm = hist.ravel() / hist.max()
+        # Q = hist_norm.cumsum()
+        #
+        # bins = np.arange(256)
+        #
+        # fn_min = np.inf
+        # thresh = -1
+        #
+        # for i in range(1, 256):
+        #     p1, p2 = np.hsplit(hist_norm, [i])  # probabilities
+        #     q1, q2 = Q[i], Q[255] - Q[i]  # cum sum of classes
+        #     b1, b2 = np.hsplit(bins, [i])  # weights
+        #
+        #     # finding means and variances
+        #     m1, m2 = np.sum(p1 * b1) / q1, np.sum(p2 * b2) / q2
+        #     v1, v2 = np.sum(((b1 - m1) ** 2) * p1) / q1, np.sum(((b2 - m2) ** 2) * p2) / q2
+        #
+        #     # calculates the minimization function
+        #     fn = v1 * q1 + v2 * q2
+        #     if fn < fn_min:
+        #         fn_min = fn
+        #         thresh = i
 
         # find otsu's threshold value with OpenCV function
         # ret, otsu = cv2.threshold(im, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
@@ -189,6 +189,7 @@ class Step():
         self.function = function
         self.execution_time_len = 15
         self.execution_time = 0
+        self.execution_times = []
         self.mean_execution_time = 0
 
     def run(self, input):
@@ -199,12 +200,12 @@ class Step():
         return self.ret
 
     def add_exec_times(self, tim):
-        if len(self.execution_time) > self.execution_time_len:
-            self.execution_time.pop(0)
+        if len(self.execution_times) > self.execution_time_len:
+            self.execution_times.pop(0)
             self.add_exec_times(tim)
         else:
-            self.execution_time.append(tim)
-        self.mean_execution_time = np.sum(self.execution_time) / len(self.execution_time)
+            self.execution_times.append(tim)
+        self.mean_execution_time = np.sum(self.execution_times) / len(self.execution_times)
 
 class StepControl():
 
@@ -256,7 +257,7 @@ class StepControl():
             return im
 
         self.steps.append(Step('gray', make_gray))
-        self.steps.append(Step('clahed', make_clahe))
+        # self.steps.append(Step('clahed', make_clahe))
         # self.steps.append(Step('blurred', make_blur))
         # self.steps.append(Step('gaussed', make_gauss))
 
@@ -265,6 +266,16 @@ class StepControl():
         self.steps.append(Step('removed frame', make_remove_frame))
         self.steps.append(Step('flooded w/white', lambda im: make_flood(im, 255)))
         self.steps.append(Step('flooded w/black', lambda im: make_flood(im, 0)))
+
+    def add_operation(self):
+        pass
+
+    def run_all(self, im):
+        for step in self.steps:
+            im = step.run(im)
+        self.ret = im
+
+
 
 step_control = StepControl()
 
@@ -276,16 +287,17 @@ def stepCV(frame, cTag):
     a = 0.5
     im = cv2.resize(frame, (0, 0), fx=a, fy=a)
 
-    for step in step_control.steps:
-        im = step.function(im)
-        add_operation( step.name, im_steps, im)
-        # print('hehe',im.shape)
+    step_control.run_all(im)
+    # for step in step_control.steps:
+    #     im = step.function(im)
+    #     add_operation( step.name, step_control, im)
+    #     # print('hehe',im.shape)
 
     # ____________________________________________________
     # findTags and put them into im_tags list
-    paired, im_tags = findTags(im.copy(), cTag)
+    paired, im_tags = findTags(step_control.ret.copy(), cTag)
 
-    return im_steps, im_tags
+    return step_control, im_tags
 
 def loopCV(cap):
     print("loopCV started")

@@ -123,8 +123,8 @@ class StepWidgetControl():
         elif command == 'none':
             [widget.set_drawing(False) for widget in self.layout_steps.children]
 
-    def layout_steps_add_widgets(self, im_steps):
-        diff = len(im_steps) - len(self.layout_steps.children)
+    def layout_steps_add_widgets(self, step_control):
+        diff = len(step_control.steps) - len(self.layout_steps.children)
         if diff > 0: # create widgets
             for num in range(0, np.abs(diff)):
                 self.layout_steps.add_widget(StepWidget())
@@ -134,20 +134,21 @@ class StepWidgetControl():
                 self.layout_steps.remove_widget( self.layout_steps.children[-1])
                 print('removed widget')
 
-        [widget.recreate_widget(np.uint8(im_item[1][0]), im_item[0])
-         for (widget, im_item) in zip(self.layout_steps.children, im_steps)]
+        [widget.recreate_widget(np.uint8(step.ret), step.name)
+         for (widget, step) in zip(self.layout_steps.children, step_control.steps)]
 
-    def update_layout_steps(self, im_steps):
+    def update_layout_steps(self, step_control):
 
-        if im_steps is not None:
-            # im_steps = [im_steps[1],im_steps[1]]
-            if len(im_steps) > 0:
-                if len(im_steps) != len(self.layout_steps.children):
-                    self.layout_steps_add_widgets(im_steps)
-                else:
-                    # print('hej')
-                    [widget.update_texture(np.uint8(im_item[1][0].copy()))
-                     for (im_item, widget) in zip(im_steps, self.layout_steps.children)]
+        if step_control is not None:
+            if len(step_control.steps) != len(self.layout_steps.children):
+                self.layout_steps_add_widgets(step_control)
+            else:
+                [widget.update_texture(np.uint8(step.ret.copy()))
+                 for (step, widget)
+                 in zip(step_control.steps, self.layout_steps.children)]
+
+
+
 
 def rgb_to_str(rgb):
     """Returns: string representation of RGB without alpha
@@ -256,13 +257,13 @@ class multicopterApp(App):
             self.root.grid_img_tags.color = (.08, .96 , .24)
 
     def redraw_findtag(self, dt):
-        # im_steps = self.findtag_control.im_steps
-        # if im_steps is not None:
-        #     self.root.img_steps.texture = convert_to_texture(im_steps)
+        # step_control = self.findtag_control.step_control
+        # if step_control is not None:
+        #     self.root.img_steps.texture = convert_to_texture(step_control)
 
-        im_steps = self.findtag_control.im_steps
-        self.root.step_widgets_control.update_layout_steps(im_steps)
-        # self.root.update_layout_steps(im_steps)
+        step_control = self.findtag_control.step_control
+        self.root.step_widgets_control.update_layout_steps(step_control)
+        # self.root.update_layout_steps(step_control)
 
 
         if len(self.findtag_control.execution_time) > 0:

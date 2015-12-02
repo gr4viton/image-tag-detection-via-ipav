@@ -167,7 +167,7 @@ class C_tagModel: # tag model
             self.ptsDetectArea = getBoxCorners(self.detectArea.tl[0], self.detectArea.hw[0] )
 
             # detection of square subAreas in SymbolArea
-            num = 2
+            num = 6
 
             self.symbolSubAreas= self.symbolArea.getSubAreas(num, num)
             self.rotatedModelCodes = []
