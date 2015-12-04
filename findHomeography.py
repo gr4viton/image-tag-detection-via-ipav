@@ -1,13 +1,26 @@
 import numpy as np
 import cv2
+from enum import Enum
+
+class Error(Enum):
+    flawless = 0
+    no_square_points = 1
+    no_inverse_matrix = 2
+    no_tag_rotations_found = 3
+    rotation_uncertainity = 4
+    some3 = 5
+    some4 = 6
+
 
 class C_observedTag:
     # static class variable - known Tag
     # tagModels = loadTagModels('2L')
 
-    def __init__(self, imTagInScene):
+    def __init__(self, imTagInScene, scene_markuped):
         self.imScene = imTagInScene # image of scene in which the tag is supposed to be
         self.imWarped = None # ground floor image of tag transformed from imScene
+        self.tag_warped = None # warped tag image into model_tag space
+
         self.dst_pts = None # perspectively deformed detectionArea square corner points
         self.mWarp2tag = None # transformation matrix from perspective scene to ground floor tag
         self.mWarp2scene = None # transformation matrix from ground floor tag to perspective scene
@@ -15,6 +28,11 @@ class C_observedTag:
         self.mu = None # all image moments
         self.mc = None # central moment
         self.rotation = None # square symbols in symbolArea check possible rotations similar to cTagModel - [0,90,180,270]deg
+        self.error = Error.flawless # error
+        self.scene_markuped = scene_markuped # whole image to print additive markups of this observed tag to
+
+        self.color_corners = 160
+        self.color_centroid = 180
 
     def calcMoments(self):  # returns 0 on success
         self.mu = cv2.moments(self.cntExternal)
@@ -32,11 +50,24 @@ class C_observedTag:
         self.cntExternal = cntExternal
         return self.calcMoments()
 
+    def set_error(self, error):
+        self.error = error
+        verbatim = True
+        if verbatim == True :
+            if error == Error.no_square_points:
+                print('Could not find square in image')
+            elif error == Error.no_inverse_matrix:
+                print('Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!')
+
+        return self.error
+
     def findWarpMatrix(self, model_tag): # returns 0 on succesfull matching
 
-        if self.findSquare() != 0:
-            # print('Could not find square in image')
-            return 1
+        if self.findSquare() != Error.flawless:
+            return self.error
+
+        drawCentroid(self.scene_markuped, self.cntExternal, self.color_centroid) # DRAW centroid
+
         # self.mWarp2tag, mask= cv2.findHomography(src_pts, self.dst_pts, cv2.RANSAC, 5.0)
         # method = cv2.LMEDS
         src_pts = model_tag.ptsDetectArea
@@ -50,31 +81,30 @@ class C_observedTag:
             self.mWarp2tag = np.linalg.inv(self.mWarp2scene)
         except:
             # raise Exception('Cannot calculate inverse matrix.')
+
             # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
-            return 1
+            return self.set_error(Error.no_inverse_matrix)
+
 
         self.imWarped = self.drawSceneWarpedToTag(model_tag)
 
-        check = self.addWarpRotation(model_tag)
-        if check != 0:
-            return 1
+        self.addWarpRotation(model_tag)
 
+        return self.error
 
-        return 0
-
-    def addWarpRotation(self,cTagModel):
+    def addWarpRotation(self, model_tag):
 
         # find out if it is really a tag
-        if cTagModel.checkType == 'symbolSquareMeanValue':
+        if model_tag.checkType == 'symbolSquareMeanValue':
 
-            imSymbolArea = cTagModel.symbolArea.getRoi( self.imWarped )
+            imSymbolArea = model_tag.symbolArea.getRoi( self.imWarped )
 
             imSymbolSubAreas = []
-            for area in cTagModel.symbolSubAreas:
+            for area in model_tag.symbolSubAreas:
                 imSub = area.getRoi(imSymbolArea)
                 imSymbolSubAreas.append(imSub)
 
-            squareMeans = cTagModel.getSquareMeans(imSymbolSubAreas)
+            squareMeans = model_tag.getSquareMeans(imSymbolSubAreas)
             # print squareMeans
         # a = [1, 2, 3, 4]
         # b = [5,6,7,8]
@@ -85,7 +115,7 @@ class C_observedTag:
         # waitKeyExit()
 
             self.rotation  = []
-            for modelCode in cTagModel.rotatedModelCodes:
+            for modelCode in model_tag.rotatedModelCodes:
                 if modelCode == squareMeans:
                     self.rotation .append(1)
                 else:
@@ -93,13 +123,13 @@ class C_observedTag:
 
             # print rotation
             if sum(self.rotation ) == 0:
-                return 1
+                return self.set_error(Error.no_tag_rotations_found)
             if sum(self.rotation ) > 1:
-                return 2 # two or more possible rotations
+                return self.set_error(Error.rotation_uncertainity)
 
             self.rotIdx = np.sum([ i*self.rotation[i] for i in range(0,4) ])
-            self.mWarp2tag = matDot(cTagModel.mInvRotTra[self.rotIdx], self.mWarp2tag)
-        return 0
+            self.mWarp2tag = matDot(model_tag.mInvRotTra[self.rotIdx], self.mWarp2tag)
+        return self.error
         # thresholded element-wise addition
         # procentual histogram - of seenTag vs of tagModel
 
@@ -107,7 +137,8 @@ class C_observedTag:
         if self.cntExternal is None:
             # print("Should I count the cntExternal now?")
             if self.calcExternalContour() != 0:
-                return 1
+                print("Should I count the cntExternal now?")
+                return 42
 
         im = self.imScene
         cnt = self.cntExternal
@@ -120,11 +151,22 @@ class C_observedTag:
         corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im, self.mc, box, cnt)
 
         if corner_pts == []:
-            return 1
+            return self.set_error(Error.no_square_points)
 
         self.dst_pts = corner_pts
-        return 0
+        drawDots(self.scene_markuped, self.dst_pts, self.color_corners) # draw corner points
+        return self.error
 
+    def calculate(self, model_tag):
+
+        # what was the purpose of this
+        # if self.addExternalContour(self.cntExternal) != 0:
+        #     print('added_external contour')
+        #     continue
+
+
+        if self.findWarpMatrix(model_tag) == Error.flawless:
+            self.tag_warped = self.drawSceneWarpedToTag(model_tag)
 
     def drawTagWarpedToScene(self, imTag, imScene):
         h,w = imTag.shape
@@ -132,9 +174,9 @@ class C_observedTag:
         dst = cv2.perspectiveTransform(pts, self.mWarp2tag)
         return cv2.polylines(imScene,[np.int32(dst)],True, 128,3, cv2.LINE_8)
 
-    def drawSceneWarpedToTag(self, cTagModel):
+    def drawSceneWarpedToTag(self, model_tag):
         # print self.mInverse
-        return cv2.warpPerspective(self.imScene.copy(), self.mWarp2tag, cTagModel.imTagDetect.shape,
+        return cv2.warpPerspective(self.imScene.copy(), self.mWarp2tag, model_tag.imTagDetect.shape,
                                    flags=cv2.INTER_LINEAR )
                                     #, , cv2.BORDER_CONSTANT)
 
@@ -456,7 +498,7 @@ def findFarthestFromCenter(im,mc,box,cnt):
     cv2.drawContours(im,[int_box],0,color,1)
     return corner_pts
 
-def findClosestToMinAreaRectAndFarthestFromCenter(im,mc,box,cnt):
+def findClosestToMinAreaRectAndFarthestFromCenter(im, mc, box, cnt):
    # find points from countour which are the closest (L2SQR) to minAreaRect & also farthest from center
     norm = cv2.NORM_L2SQR
     mc = np.float32(mc)
@@ -530,53 +572,53 @@ def matDot(A,B):
 
 if __name__ == '__main__':
 
-    strTag = '2L'
-    cTagModel = read_model_tag(strTag)
+    # strTag = '2L'
+    # cTagModel = read_model_tag(strTag)
+    #
+    # imScene = readIm('space1', strTag)
+    #
+    # # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    # cSeenTag = C_observedTag(imScene.copy())
+    # success = cSeenTag.findWarpMatrix(cTagModel)
+    # if not success:
+    #     print('Tag from scene could not be transformed!')
+    #     exit
+    #
+    # imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)
+    #
+    # mWarp = cSeenTag.mWarp2tag
+    #
+    # print(cTagModel.ptsDetectArea)
+    # print(cSeenTag.dst_pts)
+    # imScene = drawDots(imScene, cSeenTag.dst_pts)
+    # # imScene = drawRotatedBoundingBox(imScene,cnt,)
+    #
+    # print(str(mWarp) + " = Homography transformation matrix")
+    #
+    # imTag = drawDots(cTagModel.imTagDetect.copy(), cTagModel.ptsDetectArea)
+    # imTagFromScene = cSeenTag.drawSceneWarpedToTag(cTagModel)
+    #
+    # imBoth = joinIm([ [imTagFromScene], [imTag], [imScene] ])
+    #
+    # imAll = colorifyGray(imBoth)
+    #
+    # # a = 0.5
+    # # imAll = cv2.resize(imAll, (0, 0), fx=a, fy=a)
+    # cv2.imshow('images',imAll)
+    #
+    # a = 0
+    # while 1:
+    #     a = a + 1
+    #     if a > 200:
+    #         break
+    #     k = cv2.waitKey(30) & 0xff
+    #     if k == ord('q'):
+    #         break
+    #     if k == 27:
+    #         break
+    # cv2.destroyAllWindows()
 
-    imScene = readIm('space1', strTag)
-
-    # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    cSeenTag = C_observedTag(imScene.copy())
-    success = cSeenTag.findWarpMatrix(cTagModel)
-    if not success:
-        print('Tag from scene could not be transformed!')
-        exit
-
-    imTagRecreated = cSeenTag.drawSceneWarpedToTag(cTagModel)
-
-    mWarp = cSeenTag.mWarp2tag
-
-    print(cTagModel.ptsDetectArea)
-    print(cSeenTag.dst_pts)
-    imScene = drawDots(imScene, cSeenTag.dst_pts)
-    # imScene = drawRotatedBoundingBox(imScene,cnt,)
-
-    print(str(mWarp) + " = Homography transformation matrix")
-
-    imTag = drawDots(cTagModel.imTagDetect.copy(), cTagModel.ptsDetectArea)
-    imTagFromScene = cSeenTag.drawSceneWarpedToTag(cTagModel)
-
-    imBoth = joinIm([ [imTagFromScene], [imTag], [imScene] ])
-
-    imAll = colorifyGray(imBoth)
-
-    # a = 0.5
-    # imAll = cv2.resize(imAll, (0, 0), fx=a, fy=a)
-    cv2.imshow('images',imAll)
-
-    a = 0
-    while 1:
-        a = a + 1
-        if a > 200:
-            break
-        k = cv2.waitKey(30) & 0xff
-        if k == ord('q'):
-            break
-        if k == 27:
-            break
-    cv2.destroyAllWindows()
-
-
+    pass
 
 
 

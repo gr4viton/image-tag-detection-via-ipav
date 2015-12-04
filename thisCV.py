@@ -69,27 +69,26 @@ def imclearborder(im, radius, buffer):
 
 def findTags(im_scene, model_tag):
 
-    im_markuped = im_scene.copy()
-    _, contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
+    scene_markuped = im_scene.copy()
+    # _, contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
     # _, contours, hierarchy = cv2.findContours(im_scene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    _, external_contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE )
 
-    imTags = [];
-
-    seen_model_tags = []
+    seen_tags = []
 
     # find bounding boxes etc
-    for q in np.arange(len(contours)):
+    for q in np.arange(len(external_contours)):
 
         # remove all inner contours
         if hierarchy[0][q][3]!= -1:
             continue
 
-        cnt = contours[q]
+        cnt = external_contours[q]
 
         # slice out scene_tag
         mask = np.uint8( np.zeros(im_scene.shape) )
         col = 1
-        cv2.drawContours(mask, contours, q, col, -1)
+        cv2.drawContours(mask, external_contours, q, col, -1)
 
         scene_tag = np.uint8( np.zeros(im_scene.shape) )
         cv2.bitwise_and(mask, im_scene.copy(), scene_tag)
@@ -109,27 +108,14 @@ def findTags(im_scene, model_tag):
         #     # imTags = imIn[y:y+h,x:x+w]
 
         # if it sustains tha check of some kind
-        if 1:
-            seen_model_tag = fh.C_observedTag(scene_tag)
 
-            if seen_model_tag.addExternalContour(cnt) != 0:
-                continue
+        observed_tag = fh.C_observedTag(scene_tag, scene_markuped)
+        # observed_tag = fh.C_observedTag(scene_tag, None)
+        observed_tag.calculate(model_tag)
 
-            fh.drawCentroid(im_markuped, cnt, 180) # DRAW centroid
+        seen_tags.append(observed_tag)
 
-            if seen_model_tag.findWarpMatrix(model_tag) != 0:
-                continue
-
-            fh.drawDots(im_markuped, seen_model_tag.dst_pts, 200) # draw corner points
-
-
-
-            tag_warped = seen_model_tag.drawSceneWarpedToTag(model_tag)
-
-            imTags.append(tag_warped)
-            seen_model_tags.append(seen_model_tag)
-
-    return im_markuped, imTags
+    return scene_markuped, seen_tags
 
 def bwareaopen(imgBW, areaPixels,col = 0):
     # Given a black and white image, first find all of its contours
@@ -224,7 +210,6 @@ class Step():
 
 class StepControl():
 
-
     buffer = None
 
     def recreate_buffer(self, im):
@@ -294,9 +279,9 @@ class StepControl():
 
         def make_find_tags(im):
 
-            imSceneWithDots, imTags = findTags(im.copy(), self.model_tag)
-            self.im_tags = imTags
-            return imSceneWithDots
+            markuped_scene, seen_tags = findTags(im.copy(), self.model_tag)
+            self.seen_tags = seen_tags
+            return markuped_scene
 
         self.steps.append(Step('original', make_nothing))
         self.steps.append(Step('gray', make_gray))

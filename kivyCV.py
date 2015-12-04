@@ -18,6 +18,7 @@ from kivy.properties import ObjectProperty, StringProperty, NumericProperty
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.config import Config
 
+from findHomeography import Error as tag_error
 import cv2
 import numpy as np
 # import sys
@@ -188,6 +189,8 @@ class Multicopter(GridLayout):
     grid_img_tags = ObjectProperty()
     lb_webcam_resolution = StringProperty('? x ? x ?')
 
+    tag_error_count_text = StringProperty('No tags found')
+
     def __init__(self, capture_control, findtag_control, **kwargs):
         # make sure we aren't overriding any important functionality
         super(Multicopter, self).__init__(**kwargs)
@@ -232,8 +235,10 @@ class multicopterApp(App):
         self.findtag_control.start_findtagging()
 
 
-        self.root = root = Multicopter(self.capture_control, self.findtag_control)
+        self.tag_errors_count = {}
+        [self.tag_errors_count.update({str(name): int(0)}) for name, member in tag_error.__members__.items()]
 
+        self.root = root = Multicopter(self.capture_control, self.findtag_control)
         self.build_opencv()
 
         # self.capture_control.toggle_source_id() # take the second input source
@@ -264,7 +269,7 @@ class multicopterApp(App):
         if frame is not None:
             self.root.img_webcam.texture = convert_to_texture(frame)
 
-    def set_img_tags(self, found = False):
+    def set_tags_found(self, found = False):
         if(found == False):
             self.root.grid_img_tags.color = (.08, .16 , .24)
         else:
@@ -284,21 +289,40 @@ class multicopterApp(App):
             self.root.label_mean_exec_time = str(np.round(self.findtag_control.execution_time[-1], 5) * 1000)
             self.root.label_mean_exec_time_last = str(np.round(self.findtag_control.mean_execution_time, 5) * 1000)
 
-        imTags = self.findtag_control.im_tags
 
-        if imTags is not None:
-            self.root.txt_numFound.text = str(len(imTags))
+        for key in self.tag_errors_count.keys():
+            self.tag_errors_count[key] = 0
 
-            if len(imTags) > 0:
-                self.set_img_tags(True)
-                imAllTags = fh.joinIm( [[im] for im in imTags], 1 )
-                if len(imAllTags.shape) == 2:
-                    imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)
-                self.root.img_tags.texture = convert_to_texture( imAllTags.copy() )
-            else:
-                self.set_img_tags(False)
+        seen_tags = self.findtag_control.seen_tags
+
+        if seen_tags is not None:
+
+            for tag in seen_tags:
+                # print(tag.error)
+                self.tag_errors_count[tag.error.name] = self.tag_errors_count[tag.error.name] + 1
+
+                if tag.error == tag_error.flawless:
+                    self.set_tags_found(True)
+
+                    imAllTags = fh.joinIm([[im] for im in seen_tags], 1)
+                    if len(imAllTags.shape) == 2:
+                        imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)
+                    self.root.img_tags.texture = convert_to_texture(imAllTags.copy())
+                else:
+                    self.set_tags_found(False)
+
+
         else:
-            self.set_img_tags(False)
+            self.set_tags_found(False)
+
+        self.set_tag_error_count_text()
+
+    def set_tag_error_count_text(self):
+        list = [str(self.tag_errors_count.get(name)) + ' = ' + str(name)
+                for name, member in tag_error.__members__.items()]
+        self.root.tag_error_count_text = '\n'.join(list)
+
+        self.root.txt_numFound.text = str(self.tag_errors_count.get(tag_error.flawless))
 
     def on_stop(self):
         print("Stopping capture")

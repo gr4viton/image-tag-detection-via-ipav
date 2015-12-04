@@ -68,7 +68,7 @@ class FindtagControl():
 
 
     step_control = LockedNumpyArray()
-    im_tags = LockedNumpyArray()
+    seen_tags = LockedNumpyArray()
     findtagging = LockedValue(False)
     model_tag = LockedValue()
     # execution_time = LockedValue([])
@@ -119,7 +119,7 @@ class FindtagControl():
 
         # not thread safe
         self.step_control = self._step_control
-        self.im_tags = self._step_control.im_tags
+        self.seen_tags = self._step_control.seen_tags
 
         # here raise an event for the conversion and redrawing to happen
         # time.sleep(0.0001)
