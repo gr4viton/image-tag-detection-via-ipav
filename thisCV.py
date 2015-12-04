@@ -6,23 +6,24 @@ import findHomeography as fh
 import time
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # global variables
-global tracker, ar_verts, ar_edges
 
 
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # function definitions
 
-def imclearborder(imgBW, radius):
+def imclearborder(im, radius, buffer):
     # Given a black and white image, first find all of its contours
-    imgBWcopy = imgBW.copy()
-    _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)
-    # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_L1)
+
+    #todo make faster copping as buffer is always the same size!
+    buffer = im.copy()
+    # _, contours, hierarchy = cv2.findContours(buffer, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    _, contours, hierarchy = cv2.findContours(buffer.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)
+    # _, contours, hierarchy = cv2.findContours(buffer.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_L1)
 
     # hierarchy = Next, Previous, First_Child, Parent
     # Get dimensions of image
-    imgRows = imgBW.shape[0]
-    imgCols = imgBW.shape[1]
+    n_rows = im.shape[0]
+    n_cols = im.shape[1]
 
     cTouching = []  # indexes of contours that touch the border
     cInsideTouching = [] # indexes that are inside of contours that touch the border
@@ -36,8 +37,8 @@ def imclearborder(imgBW, radius):
             colCnt = pt[0][0]
 
             # If this is within the radius of the border this contour goes bye bye!
-            check1 = (rowCnt >= 0 and rowCnt < radius) or (rowCnt >= imgRows - 1 - radius and rowCnt < imgRows)
-            check2 = (colCnt >= 0 and colCnt < radius) or (colCnt >= imgCols - 1 - radius and colCnt < imgCols)
+            check1 = (rowCnt >= 0 and rowCnt < radius) or (rowCnt >= n_rows - 1 - radius and rowCnt < n_rows)
+            check2 = (colCnt >= 0 and colCnt < radius) or (colCnt >= n_cols - 1 - radius and colCnt < n_cols)
 
             if check1 or check2:
                 cTouching.append(idx)
@@ -49,7 +50,7 @@ def imclearborder(imgBW, radius):
                 break
 
     # create mask to delete (not touching the child contours insides)
-    mask = np.uint8( np.ones(imgBW.shape) + 254)
+    mask = np.uint8( np.ones(im.shape) + 254)
 
     for idx in cTouching:
         col = 0
@@ -61,36 +62,41 @@ def imclearborder(imgBW, radius):
     # mask2 = mask.copy()
     # cv2.dilate(mask,mask2)
 
-    cv2.bitwise_and(mask, imgBW, imgBWcopy)
+    cv2.bitwise_and(mask, im, buffer)
     # imgBWcopy = imgBWcopy * 255
-    imgBWcopy = imgBWcopy
-    return imgBWcopy
+    # imgBWcopy = imgBWcopy
+    return buffer
 
 def findTags(im_scene, model_tag):
 
-    # _, contours, hierarchy = cv2.findContours(imgBWcopy.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
-    _, contours, hierarchy = cv2.findContours(im_scene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    im_markuped = im_scene.copy()
+    _, contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
+    # _, contours, hierarchy = cv2.findContours(im_scene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+
     imTags = [];
 
-    cSeenTags = []
-    imSceneWithDots = im_scene.copy()
+    seen_model_tags = []
 
     # find bounding boxes etc
     for q in np.arange(len(contours)):
 
+        # remove all inner contours
+        if hierarchy[0][q][3]!= -1:
+            continue
+
         cnt = contours[q]
 
-        # slice out imTagInScene
+        # slice out scene_tag
         mask = np.uint8( np.zeros(im_scene.shape) )
         col = 1
         cv2.drawContours(mask, contours, q, col, -1)
 
-        imTagInScene = np.uint8( np.zeros(im_scene.shape) )
-        cv2.bitwise_and(mask, im_scene.copy(), imTagInScene)
-        imTagInScene = imTagInScene * 255
+        scene_tag = np.uint8( np.zeros(im_scene.shape) )
+        cv2.bitwise_and(mask, im_scene.copy(), scene_tag)
+        scene_tag = scene_tag * 255
 
         # # find out euler number
-        # _, tagCnt, hie = cv2.findContours(imTagInScene.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # _, tagCnt, hie = cv2.findContours(scene_tag.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         # if hie is None: continue
         # if len(hie) == 0: continue
         # hie = hie[0]
@@ -99,25 +105,31 @@ def findTags(im_scene, model_tag):
         # cntNumMax = 1 + innerSquaresCount
 
         # if len(hie) >= cntNumMin and len(hie) <= cntNumMax:
-        #     imTags.append(imTagInScene)
+        #     imTags.append(scene_tag)
         #     # imTags = imIn[y:y+h,x:x+w]
 
         # if it sustains tha check of some kind
         if 1:
-            cSeenTag = fh.C_observedTag(imTagInScene)
+            seen_model_tag = fh.C_observedTag(scene_tag)
 
-            if cSeenTag.addExternalContour(cnt) != 0:
-                continue
-            if cSeenTag.findWarpMatrix(model_tag) != 0:
+            if seen_model_tag.addExternalContour(cnt) != 0:
                 continue
 
-            imTagRecreated = cSeenTag.drawSceneWarpedToTag(model_tag)
-            fh.drawCentroid(imSceneWithDots, cnt, 180) # DRAW centroid
+            fh.drawCentroid(im_markuped, cnt, 180) # DRAW centroid
 
-            imTags.append(imTagRecreated )
-            cSeenTags.append(cSeenTag)
+            if seen_model_tag.findWarpMatrix(model_tag) != 0:
+                continue
 
-    return imSceneWithDots, imTags
+            fh.drawDots(im_markuped, seen_model_tag.dst_pts, 200) # draw corner points
+
+
+
+            tag_warped = seen_model_tag.drawSceneWarpedToTag(model_tag)
+
+            imTags.append(tag_warped)
+            seen_model_tags.append(seen_model_tag)
+
+    return im_markuped, imTags
 
 def bwareaopen(imgBW, areaPixels,col = 0):
     # Given a black and white image, first find all of its contours
@@ -213,12 +225,28 @@ class Step():
 class StepControl():
 
 
+    buffer = None
+
+    def recreate_buffer(self, im):
+        if self.buffer is None:
+            self.buffer = im.copy()
+        else:
+            if im.shape != self.buffer.shape:
+                self.buffer = im.copy()
+            # else:
+            #     return self.buffer
+
+    def get_buffer(self, im):
+        self.recreate_buffer(im)
+        return self.buffer
 
     def __init__(self, div, model_tag):
         self.steps = []
         self.div = div
         self.model_tag = model_tag
 
+        def make_nothing(im):
+            return im
         def make_resize(im):
             return cv2.resize(im, (0, 0), fx=self.div, fy=self.div)
         def make_gray(im):
@@ -228,10 +256,9 @@ class StepControl():
         def make_clahe(im):
             return clahe.apply(im)
 
-        a = 75
         def make_blur(im, a=75):
-            return cv2.bilateralFilter(im,9,a,a)
-        a = 5
+            return cv2.bilateralFilter(im, 9, a, a)
+
         def make_gauss(im, a=5):
             return cv2.GaussianBlur(im, (a, a), 0)
 
@@ -239,12 +266,11 @@ class StepControl():
             return threshIT(im,'otsu').copy()
 
         def make_clear_border(im, width = 5):
-            return imclearborder(im, width)
+            return imclearborder(im, width, self.get_buffer(im))
+
 
         def make_remove_frame(im, width = 5, color = 0):
-            # im_b = cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a,
-            #                           cv2.BORDER_CONSTANT, value=color)
-            # print(np.max(im_b))
+            a = width
             return cv2.copyMakeBorder(im[a:-a, a:-a], a, a, a, a,
                                       cv2.BORDER_CONSTANT, value=color)
 
@@ -265,11 +291,14 @@ class StepControl():
             cv2.floodFill(im, mask, seed, color, 0, 255, rect)
             return im
 
+
         def make_find_tags(im):
+
             imSceneWithDots, imTags = findTags(im.copy(), self.model_tag)
             self.im_tags = imTags
             return imSceneWithDots
 
+        self.steps.append(Step('original', make_nothing))
         self.steps.append(Step('gray', make_gray))
         # self.steps.append(Step('clahed', make_clahe))
         # self.steps.append(Step('blurred', make_blur))
@@ -292,13 +321,9 @@ class StepControl():
             im = step.run(im)
         self.ret = im
 
-    def step_all(self, im, cTag, div):
+    def step_all(self, im, div):
         self.div = div
         self.run_all(im)
-        # ____________________________________________________
-        # findTags and put them into im_tags list
-        # paired, im_tags = findTags(self.ret.copy(), cTag)
-        # self.im_tags = self.ret
 
 
 def add_operation(operation_name, im_steps, im):
@@ -334,7 +359,7 @@ if __name__ == '__main__':
     tbValue = 3
     maxValue = 6
     # cv2.createTrackbar("trackMe", "image", tbValue, maxValue, update)
-    loopCV(cap)
+    # loopCV(cap)
     cap.release()
     cv2.destroyAllWindows()
 

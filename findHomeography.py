@@ -28,18 +28,18 @@ class C_observedTag:
         self.cntExternal = contours[0]
         return self.calcMoments()
 
-    def addExternalContour(self,cntExternal): # returns 0 on success
+    def addExternalContour(self, cntExternal): # returns 0 on success
         self.cntExternal = cntExternal
         return self.calcMoments()
 
-    def findWarpMatrix(self, cTagModel): # returns 0 on succesfull matching
+    def findWarpMatrix(self, model_tag): # returns 0 on succesfull matching
 
         if self.findSquare() != 0:
             # print('Could not find square in image')
             return 1
         # self.mWarp2tag, mask= cv2.findHomography(src_pts, self.dst_pts, cv2.RANSAC, 5.0)
         # method = cv2.LMEDS
-        src_pts = cTagModel.ptsDetectArea
+        src_pts = model_tag.ptsDetectArea
 
         self.mWarp2scene, _ = cv2.findHomography(src_pts, self.dst_pts, )
         # matchesMask = mask.ravel().tolist()
@@ -53,9 +53,9 @@ class C_observedTag:
             # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
             return 1
 
-        self.imWarped = self.drawSceneWarpedToTag(cTagModel)
+        self.imWarped = self.drawSceneWarpedToTag(model_tag)
 
-        check = self.addWarpRotation(cTagModel)
+        check = self.addWarpRotation(model_tag)
         if check != 0:
             return 1
 
@@ -117,7 +117,7 @@ class C_observedTag:
         box = cv2.boxPoints(rect)
         # corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
         # corner_pts = findFarthestFromCenter(im,mc,box,cnt)
-        corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im,self.mc,box,cnt)
+        corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im, self.mc, box, cnt)
 
         if corner_pts == []:
             return 1
@@ -166,8 +166,9 @@ class C_tagModel: # tag model
             self.ptsSymbolArea = getBoxCorners(self.symbolArea.tl[0], self.symbolArea.hw[0] )
             self.ptsDetectArea = getBoxCorners(self.detectArea.tl[0], self.detectArea.hw[0] )
 
+            #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             # detection of square subAreas in SymbolArea
-            num = 6
+            num = 5
 
             self.symbolSubAreas= self.symbolArea.getSubAreas(num, num)
             self.rotatedModelCodes = []

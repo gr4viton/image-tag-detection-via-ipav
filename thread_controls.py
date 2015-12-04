@@ -113,7 +113,7 @@ class FindtagControl():
 
     def findtag(self):
         start = time.time()
-        self._step_control.step_all(self.capture_control.frame, self.model_tag, self.resolution_div )
+        self._step_control.step_all(self.capture_control.frame, self.resolution_div )
         end = time.time()
         self.add_exec_times(end-start)
 
