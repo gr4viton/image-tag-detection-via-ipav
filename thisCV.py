@@ -73,15 +73,16 @@ def findTags(im_scene, model_tag):
     # _, contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
     # _, contours, hierarchy = cv2.findContours(im_scene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
     _, external_contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE )
+    # _, contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
 
     seen_tags = []
 
     # find bounding boxes etc
     for q in np.arange(len(external_contours)):
 
-        # remove all inner contours
-        if hierarchy[0][q][3]!= -1:
-            continue
+        # # remove all inner contours
+        # if hierarchy[0][q][3] != -1:
+        #     continue
 
         cnt = external_contours[q]
 

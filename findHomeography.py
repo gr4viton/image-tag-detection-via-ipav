@@ -19,7 +19,7 @@ class C_observedTag:
     def __init__(self, imTagInScene, scene_markuped):
         self.imScene = imTagInScene # image of scene in which the tag is supposed to be
         self.imWarped = None # ground floor image of tag transformed from imScene
-        self.tag_warped = None # warped tag image into model_tag space
+        # self.tag_warped = None # warped tag image into model_tag space
 
         self.dst_pts = None # perspectively deformed detectionArea square corner points
         self.mWarp2tag = None # transformation matrix from perspective scene to ground floor tag
@@ -106,22 +106,23 @@ class C_observedTag:
 
             squareMeans = model_tag.getSquareMeans(imSymbolSubAreas)
             # print squareMeans
-        # a = [1, 2, 3, 4]
-        # b = [5,6,7,8]
-        # print zip(a,b)
-        # print(squareSums)
-        # print len(cTagModel.imSymbolSubAreas)
-        # print zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)
-        # waitKeyExit()
+            # a = [1, 2, 3, 4]
+            # b = [5,6,7,8]
+            # print zip(a,b)
+            # print(squareSums)
+            # print len(cTagModel.imSymbolSubAreas)
+            # print zip(imSymbolSubAreas, cTagModel.imSymbolSubAreas)
+            # waitKeyExit()
+            # print(squareMeans)
 
             self.rotation  = []
             for modelCode in model_tag.rotatedModelCodes:
-                if modelCode == squareMeans:
+                if modelCode == squareMeans: # * 1
                     self.rotation .append(1)
                 else:
                     self.rotation .append(0)
 
-            # print rotation
+            # print(self.rotation)
             if sum(self.rotation ) == 0:
                 return self.set_error(Error.no_tag_rotations_found)
             if sum(self.rotation ) > 1:
@@ -164,9 +165,9 @@ class C_observedTag:
         #     print('added_external contour')
         #     continue
 
-
-        if self.findWarpMatrix(model_tag) == Error.flawless:
-            self.tag_warped = self.drawSceneWarpedToTag(model_tag)
+        self.findWarpMatrix(model_tag)
+        # if self.findWarpMatrix(model_tag) == Error.flawless:
+            # self.tag_warped = self.drawSceneWarpedToTag(model_tag)
 
     def drawTagWarpedToScene(self, imTag, imScene):
         h,w = imTag.shape
@@ -210,7 +211,7 @@ class C_tagModel: # tag model
 
             #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             # detection of square subAreas in SymbolArea
-            num = 5
+            num = 2
 
             self.symbolSubAreas= self.symbolArea.getSubAreas(num, num)
             self.rotatedModelCodes = []
@@ -240,7 +241,7 @@ class C_tagModel: # tag model
                 try:
                     mInvRotTra = np.linalg.inv( mRotTra )
                 except:
-                    # raise Exception('Cannot calculate inverse matrix.')
+                    raise Exception('Cannot calculate inverse matrix.')
                     # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
                     return 1
                 self.mRotTra.append(mRotTra)
@@ -250,10 +251,16 @@ class C_tagModel: # tag model
 
 
     def getSquareMeans(self, imSymbolSubAreas):
+        # return [  np.float(np.sum(imSub))
+        #           for imSub in imSymbolSubAreas ]
+        max = np.max(imSymbolSubAreas)
         return [  np.int( np.round(
-                np.sum(imSub) / (imSub.shape[0]*imSub.shape[1]) / 255.0
+                np.float(np.sum(imSub)) / (imSub.shape[0] * imSub.shape[1]) / max
                 ) )
                 for imSub in imSymbolSubAreas ]
+
+        # for imSub in imSymbolSubAreas:
+        #     print(np.sum(imSub))
 
     #
     # def __init__(self, area):
@@ -395,7 +402,7 @@ def joinIm(ims, vertically = 0, color = 0):
         else:
             imLast = im
 
-    return imLast
+    return np.array(imLast)
 
 def colorifyGray(im):
     return cv2.cvtColor(im, cv2.COLOR_GRAY2RGB)

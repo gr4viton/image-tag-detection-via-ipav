@@ -294,6 +294,7 @@ class multicopterApp(App):
             self.tag_errors_count[key] = 0
 
         seen_tags = self.findtag_control.seen_tags
+        im_list = []
 
         if seen_tags is not None:
 
@@ -304,10 +305,9 @@ class multicopterApp(App):
                 if tag.error == tag_error.flawless:
                     self.set_tags_found(True)
 
-                    imAllTags = fh.joinIm([[im] for im in seen_tags], 1)
-                    if len(imAllTags.shape) == 2:
-                        imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)
-                    self.root.img_tags.texture = convert_to_texture(imAllTags.copy())
+                    # print(tag.tag_warped.shape)
+                    im_list.append([tag.imWarped])
+
                 else:
                     self.set_tags_found(False)
 
@@ -316,6 +316,18 @@ class multicopterApp(App):
             self.set_tags_found(False)
 
         self.set_tag_error_count_text()
+
+        if len(im_list) > 0:
+            imAllTags = fh.joinIm(im_list, 1)
+            # if len(imAllTags.shape) == 2:
+            #     imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)
+            self.root.img_tags.texture = convert_to_texture(imAllTags.copy())
+
+        # if len(imAllTags.shape) == 2:
+        #     imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)
+
+        # print(imAllTags.shape)
+        # self.root.img_tags.texture = convert_to_texture(imAllTags.copy())
 
     def set_tag_error_count_text(self):
         list = [str(self.tag_errors_count.get(name)) + ' = ' + str(name)
