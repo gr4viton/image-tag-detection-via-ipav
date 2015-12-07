@@ -2,6 +2,9 @@ import numpy as np
 import cv2
 from enum import Enum
 
+from itertools import cycle
+
+
 class Error(Enum):
     flawless = 0
     no_square_points = 1
@@ -9,7 +12,8 @@ class Error(Enum):
     no_tag_rotations_found = 3
     rotation_uncertainity = 4
     external_contour_missunderstanding_probably = 5
-    some4 = 6
+    contour_too_small = 6
+    some1 = 7
 
 
 class C_observedTag:
@@ -33,6 +37,10 @@ class C_observedTag:
 
         self.color_corners = 160
         self.color_centroid = 180
+        self.external_contour_approx = cv2.CHAIN_APPROX_SIMPLE
+        # self.external_contour_approx = cv2.CHAIN_APPROX_TC89_L1
+
+        self.minimum_contour_length = 4*4
 
     def calcMoments(self):  # returns 0 on success
         self.mu = cv2.moments(self.cntExternal)
@@ -42,7 +50,8 @@ class C_observedTag:
         return 0
 
     def calcExternalContour(self): # returns 0 on success
-        _, contours, hierarchy = cv2.findContours(self.imScene.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        _, contours, hierarchy = cv2.findContours(self.imScene.copy(), cv2.RETR_EXTERNAL, self.external_contour_approx )
         self.cntExternal = contours[0]
         return self.calcMoments()
 
@@ -142,15 +151,24 @@ class C_observedTag:
                 self.set_error(Error.external_contour_missunderstanding_probably)
                 return 42
 
+
+
+        def findFromCenter(cnt,im,mc):
+            # rotated boundingbox
+            rect = cv2.minAreaRect(cnt)
+            box = cv2.boxPoints(rect)
+            # return findClosestToMinAreaRect(im,mc,box,cnt)
+            # return findFarthestFromCenter(im,mc,box,cnt)
+            return findClosestToMinAreaRectAndFarthestFromCenter(im, self.mc, box, cnt)
+
         im = self.imScene
         cnt = self.cntExternal
+        # corner_pts = findFromCenter(cnt, im, self.mc)
 
-        # rotated boundingbox
-        rect = cv2.minAreaRect(cnt)
-        box = cv2.boxPoints(rect)
-        # corner_pts = findClosestToMinAreaRect(im,mc,box,cnt)
-        # corner_pts = findFarthestFromCenter(im,mc,box,cnt)
-        corner_pts = findClosestToMinAreaRectAndFarthestFromCenter(im, self.mc, box, cnt)
+        if len(cnt) < self.minimum_contour_length:
+            return self.set_error(Error.contour_too_small)
+
+        corner_pts = findDirectionDrift(cnt, self.external_contour_approx)
 
         if corner_pts == []:
             return self.set_error(Error.no_square_points)
@@ -516,7 +534,7 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im, mc, box, cnt):
     [corner_pts.append(box[i]) for i in range(0,4)] # append 4 mc
     corner_pts = np.float32(corner_pts)
 
-    distSq = [0] *4 # distance = distFromCenter - distFromMinBox
+    distSq = [0,0,0,0] # distance = distFromCenter - distFromMinBox
     distSq = np.float32(distSq)
 
     cnt = np.float32(cnt)
@@ -541,6 +559,67 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im, mc, box, cnt):
     # int_box = np.int0(corner_pts)
     # cv2.drawContours(im,[int_box],0,color,1)
     return corner_pts
+
+# from pylab import *
+import matplotlib.pyplot as plt
+
+def findDirectionDrift(cnt, external_contour_approx):
+    """
+    Find points from countour which have the biggest change in direction of three consecutive pixels
+    """
+    norm = cv2.NORM_L2SQR
+
+    if external_contour_approx != cv2.CHAIN_APPROX_SIMPLE:
+        print('Cannot find contour direction drift from not continuous external contour')
+        return None
+
+    y = []
+    x = []
+    # circular list
+    count = len(cnt)
+    cnt = np.float32(cnt)
+    angle = np.array([])
+    for q in range(count):
+        contour_segment = np.array( [cnt[k % count][0] for k in range(q-1, q+2)] )
+        [vx, vy, _, _] = cv2.fitLine(contour_segment, norm, 0, 0.1, 0.1)
+        y.append(vy)
+        x.append(vx)
+
+    angles = np.arctan2(np.array(y), np.array(x)).tolist()
+
+    # normalize
+    angles = [angle[0] + np.pi for angle in angles]
+
+    print(count)
+
+    plt.figure(1)
+    plt.subplot(211)
+    plt.plot(angles)
+    plt.ylabel('angles')
+
+    # we want raising positive angles - so derivation will be positive -> so we want to find minimum
+    # todo check whether the angles are raising
+    # not exactly discrete derivation
+    derivate = [ angles[(q - 1) % count] - angles[(q + 1) % count] for q in range(count)]
+    # when subtracting 2pi -> 0.1 its negative -> we want it to be positive "and small"
+    npi2 = 2 * np.pi
+    derivate = [ diff + npi2 for diff in derivate if diff < 0 ]
+
+    plt.subplot(212)
+    plt.plot(derivate)
+    plt.ylabel('derivates')
+    plt.show()
+
+    # corner_indexes = np.argpartition(np.array(derivate), -4)
+    corner_indexes = np.partition(np.array(derivate), 4)[-4:]
+
+    print(corner_indexes)
+
+    if len(corner_indexes) > 0:
+        return np.array([cnt[k][0] for k in corner_indexes])
+    else:
+        return None
+
 
 def findExtremes(cnt):
     extremes = []
