@@ -8,7 +8,7 @@ class Error(Enum):
     no_inverse_matrix = 2
     no_tag_rotations_found = 3
     rotation_uncertainity = 4
-    some3 = 5
+    external_contour_missunderstanding_probably = 5
     some4 = 6
 
 
@@ -42,7 +42,7 @@ class C_observedTag:
         return 0
 
     def calcExternalContour(self): # returns 0 on success
-        _, contours, hierarchy = cv2.findContours(self.imScene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        _, contours, hierarchy = cv2.findContours(self.imScene.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         self.cntExternal = contours[0]
         return self.calcMoments()
 
@@ -139,6 +139,7 @@ class C_observedTag:
             # print("Should I count the cntExternal now?")
             if self.calcExternalContour() != 0:
                 print("Should I count the cntExternal now?")
+                self.set_error(Error.external_contour_missunderstanding_probably)
                 return 42
 
         im = self.imScene
@@ -164,7 +165,7 @@ class C_observedTag:
         # if self.addExternalContour(self.cntExternal) != 0:
         #     print('added_external contour')
         #     continue
-
+        self.addExternalContour(self.cntExternal)
         self.findWarpMatrix(model_tag)
         # if self.findWarpMatrix(model_tag) == Error.flawless:
             # self.tag_warped = self.drawSceneWarpedToTag(model_tag)
@@ -177,7 +178,7 @@ class C_observedTag:
 
     def drawSceneWarpedToTag(self, model_tag):
         # print self.mInverse
-        return cv2.warpPerspective(self.imScene.copy(), self.mWarp2tag, model_tag.imTagDetect.shape,
+        return cv2.warpPerspective(self.imScene, self.mWarp2tag, model_tag.imTagDetect.shape,
                                    flags=cv2.INTER_LINEAR )
                                     #, , cv2.BORDER_CONSTANT)
 
@@ -253,9 +254,11 @@ class C_tagModel: # tag model
     def getSquareMeans(self, imSymbolSubAreas):
         # return [  np.float(np.sum(imSub))
         #           for imSub in imSymbolSubAreas ]
-        max = np.max(imSymbolSubAreas)
+        max = np.float(np.max(imSymbolSubAreas))
+        if max == 0:
+            max = 1
         return [  np.int( np.round(
-                np.float(np.sum(imSub)) / (imSub.shape[0] * imSub.shape[1]) / max
+                np.sum(imSub) / (imSub.shape[0] * imSub.shape[1]) / max
                 ) )
                 for imSub in imSymbolSubAreas ]
 

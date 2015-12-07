@@ -288,7 +288,7 @@ class StepControl():
         self.steps.append(Step('gray', make_gray))
         # self.steps.append(Step('clahed', make_clahe))
         # self.steps.append(Step('blurred', make_blur))
-        self.steps.append(Step('gaussed', make_gauss))
+        # self.steps.append(Step('gaussed', make_gauss))
 
         self.steps.append(Step('resize', make_resize))
 

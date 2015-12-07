@@ -306,7 +306,8 @@ class multicopterApp(App):
                     self.set_tags_found(True)
 
                     # print(tag.tag_warped.shape)
-                    im_list.append([tag.imWarped])
+                    if tag.imWarped is not None:
+                        im_list.append([tag.imWarped.copy()])
 
                 else:
                     self.set_tags_found(False)
@@ -316,12 +317,14 @@ class multicopterApp(App):
             self.set_tags_found(False)
 
         self.set_tag_error_count_text()
+        if im_list is not None:
+            if len(im_list) > 0:
+                im_list_right = [ im for im in im_list if im is not None]
 
-        if len(im_list) > 0:
-            imAllTags = fh.joinIm(im_list, 1)
-            # if len(imAllTags.shape) == 2:
-            #     imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)
-            self.root.img_tags.texture = convert_to_texture(imAllTags.copy())
+                imAllTags = fh.joinIm(im_list, 1)
+                # if len(imAllTags.shape) == 2:
+                #     imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)
+                self.root.img_tags.texture = convert_to_texture(imAllTags.copy())
 
         # if len(imAllTags.shape) == 2:
         #     imAllTags = cv2.cvtColor(imAllTags, cv2.COLOR_GRAY2RGB)
