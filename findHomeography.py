@@ -174,7 +174,7 @@ class C_observedTag:
         corner_pts = findStableLineIntersection(cnt, self.external_contour_approx)
 
 
-        if corner_pts is None | len(corner_pts) != 4 :
+        if corner_pts is None or len(corner_pts) != 4 :
             return self.set_error(Error.no_square_points)
 
         self.dst_pts = corner_pts
@@ -598,7 +598,6 @@ def findStableLineIntersection(cnt, external_contour_approx):
     plt.clf()
     sp = 610
 
-
     for q in range(count):
         first = q - half_interval
         last = q + half_interval
@@ -636,11 +635,13 @@ def findStableLineIntersection(cnt, external_contour_approx):
     plt.subplot(sp)
     plt.plot(inv)
     plt.ylabel('inv ')
+    plt.xlim([0,count])
 
     sp += 1
     plt.subplot(sp)
     plt.plot(angles)
     plt.ylabel('angles atan2')
+    plt.xlim([0,count])
 
     # # normalize
     # pihalf = np.pi / 2
@@ -659,6 +660,7 @@ def findStableLineIntersection(cnt, external_contour_approx):
     plt.subplot(sp)
     plt.plot(angles)
     plt.ylabel('angles')
+    plt.xlim([0,count])
 
     # we want raising positive angles - so derivation will be positive -> so we want to find minimum
     # todo check whether the angles are raising
@@ -670,6 +672,7 @@ def findStableLineIntersection(cnt, external_contour_approx):
     plt.subplot(sp)
     plt.plot(derivate)
     plt.ylabel('derivates not normalized')
+    plt.xlim([0,count])
 
 
     # corner_indexes = np.argpartition(np.array(derivate), -4)
@@ -680,59 +683,74 @@ def findStableLineIntersection(cnt, external_contour_approx):
     min_index = [np.argmin(diff)]
     # print(sorted_indexes)
 
-
-    sorted = diff[sorted_indexes]
-    sp += 1
-    plt.subplot(sp)
-    plt.plot(sorted)
-    plt.ylabel('sorted')
+    #
+    # sorted = diff[sorted_indexes]
+    # sp += 1
+    # plt.subplot(sp)
+    # plt.plot(sorted)
+    # plt.ylabel('sorted')
+    # plt.xlim([0,count])
 
     # find one minimum and 3 maximums
     corner_indexes = np.sort(min_index + max_indexes)
 
     # between these peaks find zero diff level interval
-
     side_intervals = [range(corner_indexes[q], corner_indexes[(q + 1) % 4] ) for q in range(4)]
-
-    sides = [[], [], [], []]
-    s_angles = [[], [], [], []]
-    s_indexes = [[], [], [], []]
-    diff_limit = 1
-    for q in range(4):
-        for index in side_intervals[q]:
-            print(abs(diff[index]))
-            if abs(diff[index]) < diff_limit:
-                sides[q].append(cnt[index][0])
-                s_angles[q].append(angles[index])
-                s_indexes[q].append(index)
-
-    print(sides)
-    print(s_angles)
-    a = cnt[s_angles[0]]
-
-    for q in range(4):
-        sp += 1
-        plt.subplot(sp)
-        print(sp)
-        plt.plot(s_angles[q])
-        plt.ylabel(''.join(['side_angles [', str(q),'] = indexes', str(s_indexes[q])]))
-
+    side_intervals[3] = range(corner_indexes[3] - count, corner_indexes[0])
+    # print(side_intervals)
 
     # from those indexes get cnt points into 4 cnt_intervals
+    sides = [[], [], [], []]
+    diff_limit = np.deg2rad(5)
+    print(diff_limit)
+    for q in range(4):
+        for index in side_intervals[q]:
+            # print(abs(diff[index]))
+            if abs(diff[index]) < diff_limit:
+                sides[q].append(cnt[index][0])
+                plt.scatter(index % count, 0, marker='x')
+
     # fitLine for those 4 intervals
+    lines = []
+    for side in sides:
+        [_vx, _vy, _x0, _y0] = cv2.fitLine(np.array(side), norm, 0, 0.01, 0.01)
+        lines.append(np.array([[_x0, _y0], [_x0 + _vx, _y0 + _vy]]))
+
+    corners = []
+    for q in range(4):
+        corner = getIntersection(lines[q], lines[(q + 1) % 4])
+        print(corner)
+        # corners.append( np.array[corner[0].tolist(), corner[1].tolist()] )
+        corners.append( np.array([corner[0].tolist(), corner[1].tolist()]) )
+
     # get intersection of those 4 lines
 
-    print(corner_indexes)
-    #
     plt.show()
     plt.draw()
 
+    # print (corners)
+    return corners
 
-    if len(corner_indexes) > 0:
-        return np.array([cnt[k][0] for k in corner_indexes])
-    else:
-        return None
+import sys
+def getIntersection(line1, line2):
+    s1 = np.array(line1[0])
+    e1 = np.array(line1[1])
 
+    s2 = np.array(line2[0])
+    e2 = np.array(line2[1])
+
+    a1 = (s1[1] - e1[1]) / (s1[0] - e1[0])
+    b1 = s1[1] - (a1 * s1[0])
+
+    a2 = (s2[1] - e2[1]) / (s2[0] - e2[0])
+    b2 = s2[1] - (a2 * s2[0])
+
+    if abs(a1 - a2) < sys.float_info.epsilon:
+        return False
+
+    x = (b2 - b1) / (a1 - a2)
+    y = a1 * x + b1
+    return [x, y]
 
 def findDirectionDrift(cnt, external_contour_approx):
     """
