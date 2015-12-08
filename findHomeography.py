@@ -37,9 +37,9 @@ class C_observedTag:
 
         self.color_corners = 160
         self.color_centroid = 180
-        # self.external_contour_approx = cv2.CHAIN_APPROX_SIMPLE
+        self.external_contour_approx = cv2.CHAIN_APPROX_SIMPLE
         # self.external_contour_approx = cv2.CHAIN_APPROX_NONE
-        self.external_contour_approx = cv2.CHAIN_APPROX_TC89_L1
+        # self.external_contour_approx = cv2.CHAIN_APPROX_TC89_L1
 
         self.minimum_contour_length = 4*4
 
@@ -170,9 +170,11 @@ class C_observedTag:
         #     print('aa',cnt)
         #     return self.set_error(Error.contour_too_small)
 
-        corner_pts = findDirectionDrift(cnt, self.external_contour_approx)
+        # corner_pts = findDirectionDrift(cnt, self.external_contour_approx)
+        corner_pts = findStableLineIntersection(cnt, self.external_contour_approx)
 
-        if corner_pts == []:
+
+        if corner_pts is None | len(corner_pts) != 4 :
             return self.set_error(Error.no_square_points)
 
         self.dst_pts = corner_pts
@@ -572,15 +574,175 @@ import matplotlib
 
 # plt.ion()
 
+
+def findStableLineIntersection(cnt, external_contour_approx):
+    """
+    Find points from countour which have the biggest change in direction of three consecutive pixels
+    """
+    norm = cv2.NORM_L2SQR
+
+    if external_contour_approx != cv2.CHAIN_APPROX_SIMPLE:
+        print('Cannot find contour direction drift from not continuous external contour')
+        return None
+
+    half_interval = 1
+    vy = []
+    vx = []
+    inv = []
+    # circular list
+    count = len(cnt)
+    cnt = np.float32(cnt)
+    # direction = np.eye(1,1)
+    #
+    plt.figure(1)
+    plt.clf()
+    sp = 610
+
+
+    for q in range(count):
+        first = q - half_interval
+        last = q + half_interval
+        contour_segment = np.array( [cnt[k % count][0] for k in range(first, last + 1)] )
+        [_vx, _vy, _, _] = cv2.fitLine(contour_segment, norm, 0, 0.1, 0.1)
+
+        vec_ac = cnt[first % count][0] - cnt[last % count][0]
+        # print(vec_ac)
+        coef = 1
+        if vec_ac[1] < 0:
+            coef = -1
+            # print('-1')
+        # vec1 = np.matrix([cnt[first % count][0] - cnt[q][0]])
+        # vec2 = np.matrix([cnt[q][0] - cnt[last % count][0]])
+        #
+        # np.cross(vec1, vec2, direction)
+        #
+        # if np.sum(vec1 - vec2) != 0:
+        #     print('1', vec1, '2', vec2, 'd', direction)
+        #
+        # if direction < 0:
+        #     _vx *= -1
+        #     print('not convex')
+
+
+        # if contour_segment
+        vy.append(_vy)
+        vx.append(_vx)
+        inv.append(coef)
+
+
+    angles = np.arctan2(np.array(vy), np.array(vx)).tolist()
+
+    sp += 1
+    plt.subplot(sp)
+    plt.plot(inv)
+    plt.ylabel('inv ')
+
+    sp += 1
+    plt.subplot(sp)
+    plt.plot(angles)
+    plt.ylabel('angles atan2')
+
+    # # normalize
+    # pihalf = np.pi / 2
+    # angles = [angle[0] + pihalf for angle in angles]
+    angles = [angle[0] for angle in angles]
+
+    for q in range(count):
+        if inv[q] > 0:
+            angles[q] += np.pi
+            # print('less')
+
+
+    print(count)
+
+    sp += 1
+    plt.subplot(sp)
+    plt.plot(angles)
+    plt.ylabel('angles')
+
+    # we want raising positive angles - so derivation will be positive -> so we want to find minimum
+    # todo check whether the angles are raising
+    # not exactly discrete derivation
+    derivate = [ angles[(q ) % count] - angles[(q-1) % count] for q in range(count)]
+    # when subtracting 2pi -> 0.1 its negative -> we want it to be positive "and small"
+
+    sp += 1
+    plt.subplot(sp)
+    plt.plot(derivate)
+    plt.ylabel('derivates not normalized')
+
+
+    # corner_indexes = np.argpartition(np.array(derivate), -4)
+    # corner_indexes = np.partition(np.array(derivate), 4)[:4]
+    diff = np.array(derivate)
+    sorted_indexes = np.argpartition(diff,-3)
+    max_indexes = (sorted_indexes[-3:]).tolist()
+    min_index = [np.argmin(diff)]
+    # print(sorted_indexes)
+
+
+    sorted = diff[sorted_indexes]
+    sp += 1
+    plt.subplot(sp)
+    plt.plot(sorted)
+    plt.ylabel('sorted')
+
+    # find one minimum and 3 maximums
+    corner_indexes = np.sort(min_index + max_indexes)
+
+    # between these peaks find zero diff level interval
+
+    side_intervals = [range(corner_indexes[q], corner_indexes[(q + 1) % 4] ) for q in range(4)]
+
+    sides = [[], [], [], []]
+    s_angles = [[], [], [], []]
+    s_indexes = [[], [], [], []]
+    diff_limit = 1
+    for q in range(4):
+        for index in side_intervals[q]:
+            print(abs(diff[index]))
+            if abs(diff[index]) < diff_limit:
+                sides[q].append(cnt[index][0])
+                s_angles[q].append(angles[index])
+                s_indexes[q].append(index)
+
+    print(sides)
+    print(s_angles)
+    a = cnt[s_angles[0]]
+
+    for q in range(4):
+        sp += 1
+        plt.subplot(sp)
+        print(sp)
+        plt.plot(s_angles[q])
+        plt.ylabel(''.join(['side_angles [', str(q),'] = indexes', str(s_indexes[q])]))
+
+
+    # from those indexes get cnt points into 4 cnt_intervals
+    # fitLine for those 4 intervals
+    # get intersection of those 4 lines
+
+    print(corner_indexes)
+    #
+    plt.show()
+    plt.draw()
+
+
+    if len(corner_indexes) > 0:
+        return np.array([cnt[k][0] for k in corner_indexes])
+    else:
+        return None
+
+
 def findDirectionDrift(cnt, external_contour_approx):
     """
     Find points from countour which have the biggest change in direction of three consecutive pixels
     """
     norm = cv2.NORM_L2SQR
 
-    # if external_contour_approx != cv2.CHAIN_APPROX_SIMPLE:
-    #     print('Cannot find contour direction drift from not continuous external contour')
-    #     return None
+    if external_contour_approx != cv2.CHAIN_APPROX_SIMPLE:
+        print('Cannot find contour direction drift from not continuous external contour')
+        return None
 
     half_interval = 1
     vy = []
@@ -600,7 +762,7 @@ def findDirectionDrift(cnt, external_contour_approx):
         first = q - half_interval
         last = q + half_interval
         contour_segment = np.array( [cnt[k % count][0] for k in range(first, last + 1)] )
-        [_vx, _vy, _, _] = cv2.fitLine(contour_segment, norm, 0, 0.5, 0.5)
+        [_vx, _vy, _, _] = cv2.fitLine(contour_segment, norm, 0, 0.1, 0.1)
 
         vec_ac = cnt[first % count][0] - cnt[last % count][0]
         # print(vec_ac)
