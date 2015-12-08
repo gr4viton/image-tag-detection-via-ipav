@@ -440,7 +440,8 @@ def drawDots(im, dots, numbers=1):
         pt = [int(dot[0]),int(dot[1])]
         # col = (255, 0, 0)
         col = 180
-        cv2.circle(im, tuple(pt), 4, col, 1)
+        radius = 10
+        cv2.circle(im, tuple(pt), radius, col, 1)
         if numbers == 1:
             # font = cv2.FONT_HERSHEY_SIMPLEX
             font = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
@@ -576,82 +577,128 @@ def findDirectionDrift(cnt, external_contour_approx):
         print('Cannot find contour direction drift from not continuous external contour')
         return None
 
-    half_interval = 2
+    half_interval = 1
     vy = []
     vx = []
+    inv = []
     # circular list
     count = len(cnt)
     cnt = np.float32(cnt)
     direction = np.eye(1,1)
+
+    plt.figure(1)
+    plt.clf()
+    sp = 510
+
 
     for q in range(count):
         first = q - half_interval
         last = q + half_interval
         contour_segment = np.array( [cnt[k % count][0] for k in range(first, last + 1)] )
         [_vx, _vy, _, _] = cv2.fitLine(contour_segment, norm, 0, 0.5, 0.5)
-        vec1 = np.matrix([cnt[first % count][0] - cnt[q][0]])
-        vec2 = np.matrix([cnt[q][0] - cnt[last % count][0]])
 
-        np.cross(vec1, vec2, direction)
+        vec_ac = cnt[first % count][0] - cnt[last % count][0]
+        # print(vec_ac)
+        coef = 1
+        if vec_ac[1] < 0:
+            coef = -1
+            # print('-1')
+        # vec1 = np.matrix([cnt[first % count][0] - cnt[q][0]])
+        # vec2 = np.matrix([cnt[q][0] - cnt[last % count][0]])
+        #
+        # np.cross(vec1, vec2, direction)
+        #
+        # if np.sum(vec1 - vec2) != 0:
+        #     print('1', vec1, '2', vec2, 'd', direction)
+        #
+        # if direction < 0:
+        #     _vx *= -1
+        #     print('not convex')
 
-        if np.sum(vec1 - vec2) != 0:
-            print('1', vec1, '2', vec2, 'd', direction)
 
-        if direction < 0:
-            _vx *= -1
-            print('less')
         # if contour_segment
         vy.append(_vy)
         vx.append(_vx)
+        inv.append(coef)
+
 
     angles = np.arctan2(np.array(vy), np.array(vx)).tolist()
 
-    for q in range(count):
-        if vx[q] < 0:
-            angles[q] += np.pi
-            print('less')
+    sp += 1
+    plt.subplot(sp)
+    plt.plot(inv)
+    plt.ylabel('inv ')
+
+    sp += 1
+    plt.subplot(sp)
+    plt.plot(angles)
+    plt.ylabel('angles atan2')
 
     # # normalize
     # pihalf = np.pi / 2
     # angles = [angle[0] + pihalf for angle in angles]
     angles = [angle[0] for angle in angles]
 
+    for q in range(count):
+        if inv[q] > 0:
+            angles[q] += np.pi
+            # print('less')
+
+
     print(count)
 
-    plt.figure(1)
-    plt.clf()
-    plt.subplot(311)
+    sp += 1
+    plt.subplot(sp)
     plt.plot(angles)
     plt.ylabel('angles')
 
     # we want raising positive angles - so derivation will be positive -> so we want to find minimum
     # todo check whether the angles are raising
     # not exactly discrete derivation
-    derivate = [ angles[(q + 1) % count] - angles[(q - 1) % count] for q in range(count)]
+    derivate = [ angles[(q + 1) % count] - angles[(q) % count] for q in range(count)]
     # when subtracting 2pi -> 0.1 its negative -> we want it to be positive "and small"
 
-    plt.subplot(312)
+    sp += 1
+    plt.subplot(sp)
     plt.plot(derivate)
     plt.ylabel('derivates not normalized')
-
-    npi2 = 2 * np.pi
-
-    for q in range(count):
-        if derivate[q] < 0:
-            derivate[q] += npi2
+    #
+    # npi2 = 2 * np.pi
+    #
+    # for q in range(count):
+    #     if derivate[q] < 0:
+    #         derivate[q] += npi2
 
     # derivate = [ derivate[(q + 1) % count] - derivate[(q - 1) % count] for q in range(count)]
-
-    plt.subplot(313)
-    plt.plot(derivate)
-    plt.ylabel('derivates')
-    plt.show()
-    plt.draw()
+    #
+    # sp += 1
+    # plt.subplot(sp)
+    # plt.plot(derivate)
+    # plt.ylabel('derivates')
 
     # corner_indexes = np.argpartition(np.array(derivate), -4)
-    corner_indexes = np.partition(np.array(derivate), 4)[:4]
+    # corner_indexes = np.partition(np.array(derivate), 4)[:4]
+    diff = np.array(derivate)
+    sorted_indexes = np.argpartition(diff,-3)
+    max_indexes = (sorted_indexes[-3:]).tolist()
+    min_index = [np.argmin(diff)]
+    # print(sorted_indexes)
+
+
+    sorted = diff[sorted_indexes]
+    sp += 1
+    plt.subplot(sp)
+    plt.plot(sorted)
+    plt.ylabel('sorted')
+
+    # find one minimum and 3 maximums
+    corner_indexes = min_index + max_indexes
 
     print(corner_indexes)
+    # #
+    # plt.show()
+    # plt.draw()
+
 
     if len(corner_indexes) > 0:
         return np.array([cnt[k][0] for k in corner_indexes])
@@ -661,10 +708,10 @@ def findDirectionDrift(cnt, external_contour_approx):
 
 def findExtremes(cnt):
     extremes = []
-    extremes.extend([cnt[cnt[:,:,0].argmin()][0]] ) # leftmost
-    extremes.extend([cnt[cnt[:,:,1].argmin()][0]] ) # topmost
-    extremes.extend([cnt[cnt[:,:,0].argmax()][0]] ) # rightmost
-    extremes.extend([cnt[cnt[:,:,1].argmax()][0]] ) # bottommost
+    extremes.extend([cnt[cnt[:, :, 0].argmin()][0]] ) # leftmost
+    extremes.extend([cnt[cnt[:, :, 1].argmin()][0]] ) # topmost
+    extremes.extend([cnt[cnt[:, :, 0].argmax()][0]] ) # rightmost
+    extremes.extend([cnt[cnt[:, :, 1].argmax()][0]] ) # bottommost
     return extremes
 
 def drawBoundingBox(im,cnt, color = 255, lineWidth = 1):
