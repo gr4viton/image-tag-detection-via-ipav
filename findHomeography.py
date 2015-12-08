@@ -11,7 +11,7 @@ class Error(Enum):
     no_inverse_matrix = 2
     no_tag_rotations_found = 3
     rotation_uncertainity = 4
-    external_contour_missunderstanding_probably = 5
+    external_contour_error = 5
     contour_too_small = 6
     some1 = 7
 
@@ -37,8 +37,9 @@ class C_observedTag:
 
         self.color_corners = 160
         self.color_centroid = 180
-        self.external_contour_approx = cv2.CHAIN_APPROX_SIMPLE
-        # self.external_contour_approx = cv2.CHAIN_APPROX_TC89_L1
+        # self.external_contour_approx = cv2.CHAIN_APPROX_SIMPLE
+        # self.external_contour_approx = cv2.CHAIN_APPROX_NONE
+        self.external_contour_approx = cv2.CHAIN_APPROX_TC89_L1
 
         self.minimum_contour_length = 4*4
 
@@ -148,7 +149,7 @@ class C_observedTag:
             # print("Should I count the cntExternal now?")
             if self.calcExternalContour() != 0:
                 print("Should I count the cntExternal now?")
-                self.set_error(Error.external_contour_missunderstanding_probably)
+                self.set_error(Error.external_contour_error)
                 return 42
 
 
@@ -165,8 +166,9 @@ class C_observedTag:
         cnt = self.cntExternal
         # corner_pts = findFromCenter(cnt, im, self.mc)
 
-        if len(cnt) < self.minimum_contour_length:
-            return self.set_error(Error.contour_too_small)
+        # if len(cnt) < self.minimum_contour_length:
+        #     print('aa',cnt)
+        #     return self.set_error(Error.contour_too_small)
 
         corner_pts = findDirectionDrift(cnt, self.external_contour_approx)
 
@@ -440,13 +442,16 @@ def drawDots(im, dots, numbers=1):
         pt = [int(dot[0]),int(dot[1])]
         # col = (255, 0, 0)
         col = 180
-        radius = 10
-        cv2.circle(im, tuple(pt), radius, col, 1)
+        sh_max = np.max(im.shape)
+        radius = np.int(sh_max  / 40)
+        thickness = np.int(sh_max  / 140)
+        cv2.circle(im, tuple(pt), radius, col, thickness )
+        numbers = 1
         if numbers == 1:
             # font = cv2.FONT_HERSHEY_SIMPLEX
             font = cv2.FONT_HERSHEY_SCRIPT_SIMPLEX
-            cv2.putText(im,str(i), tuple([ d+10 for d in pt ]), font, 1, 0, 3 )
-            cv2.putText(im,str(i), tuple([ d+10 for d in pt ]), font, 1, 255, 1 )
+            cv2.putText(im,str(i), tuple([ d+10 for d in pt ]), font, 1, 0, thickness+2 )
+            cv2.putText(im,str(i), tuple([ d+10 for d in pt ]), font, 1, 255, thickness )
         i += 1
     return im
 
@@ -573,9 +578,9 @@ def findDirectionDrift(cnt, external_contour_approx):
     """
     norm = cv2.NORM_L2SQR
 
-    if external_contour_approx != cv2.CHAIN_APPROX_SIMPLE:
-        print('Cannot find contour direction drift from not continuous external contour')
-        return None
+    # if external_contour_approx != cv2.CHAIN_APPROX_SIMPLE:
+    #     print('Cannot find contour direction drift from not continuous external contour')
+    #     return None
 
     half_interval = 1
     vy = []
@@ -584,8 +589,8 @@ def findDirectionDrift(cnt, external_contour_approx):
     # circular list
     count = len(cnt)
     cnt = np.float32(cnt)
-    direction = np.eye(1,1)
-
+    # direction = np.eye(1,1)
+    #
     plt.figure(1)
     plt.clf()
     sp = 510
@@ -623,7 +628,7 @@ def findDirectionDrift(cnt, external_contour_approx):
 
 
     angles = np.arctan2(np.array(vy), np.array(vx)).tolist()
-
+    #
     sp += 1
     plt.subplot(sp)
     plt.plot(inv)
@@ -655,26 +660,14 @@ def findDirectionDrift(cnt, external_contour_approx):
     # we want raising positive angles - so derivation will be positive -> so we want to find minimum
     # todo check whether the angles are raising
     # not exactly discrete derivation
-    derivate = [ angles[(q + 1) % count] - angles[(q) % count] for q in range(count)]
+    derivate = [ angles[(q ) % count] - angles[(q-1) % count] for q in range(count)]
     # when subtracting 2pi -> 0.1 its negative -> we want it to be positive "and small"
 
     sp += 1
     plt.subplot(sp)
     plt.plot(derivate)
     plt.ylabel('derivates not normalized')
-    #
-    # npi2 = 2 * np.pi
-    #
-    # for q in range(count):
-    #     if derivate[q] < 0:
-    #         derivate[q] += npi2
 
-    # derivate = [ derivate[(q + 1) % count] - derivate[(q - 1) % count] for q in range(count)]
-    #
-    # sp += 1
-    # plt.subplot(sp)
-    # plt.plot(derivate)
-    # plt.ylabel('derivates')
 
     # corner_indexes = np.argpartition(np.array(derivate), -4)
     # corner_indexes = np.partition(np.array(derivate), 4)[:4]
@@ -692,12 +685,12 @@ def findDirectionDrift(cnt, external_contour_approx):
     plt.ylabel('sorted')
 
     # find one minimum and 3 maximums
-    corner_indexes = min_index + max_indexes
+    corner_indexes = np.sort(min_index + max_indexes)
 
     print(corner_indexes)
-    # #
-    # plt.show()
-    # plt.draw()
+    #
+    plt.show()
+    plt.draw()
 
 
     if len(corner_indexes) > 0:
