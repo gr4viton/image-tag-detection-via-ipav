@@ -562,6 +562,9 @@ def findClosestToMinAreaRectAndFarthestFromCenter(im, mc, box, cnt):
 
 # from pylab import *
 import matplotlib.pyplot as plt
+import matplotlib
+
+# plt.ion()
 
 def findDirectionDrift(cnt, external_contour_approx):
     """
@@ -573,45 +576,80 @@ def findDirectionDrift(cnt, external_contour_approx):
         print('Cannot find contour direction drift from not continuous external contour')
         return None
 
-    y = []
-    x = []
+    half_interval = 2
+    vy = []
+    vx = []
     # circular list
     count = len(cnt)
     cnt = np.float32(cnt)
-    angle = np.array([])
+    direction = np.eye(1,1)
+
     for q in range(count):
-        contour_segment = np.array( [cnt[k % count][0] for k in range(q-1, q+2)] )
-        [vx, vy, _, _] = cv2.fitLine(contour_segment, norm, 0, 0.1, 0.1)
-        y.append(vy)
-        x.append(vx)
+        first = q - half_interval
+        last = q + half_interval
+        contour_segment = np.array( [cnt[k % count][0] for k in range(first, last + 1)] )
+        [_vx, _vy, _, _] = cv2.fitLine(contour_segment, norm, 0, 0.5, 0.5)
+        vec1 = np.matrix([cnt[first % count][0] - cnt[q][0]])
+        vec2 = np.matrix([cnt[q][0] - cnt[last % count][0]])
 
-    angles = np.arctan2(np.array(y), np.array(x)).tolist()
+        np.cross(vec1, vec2, direction)
 
-    # normalize
-    angles = [angle[0] + np.pi for angle in angles]
+        if np.sum(vec1 - vec2) != 0:
+            print('1', vec1, '2', vec2, 'd', direction)
+
+        if direction < 0:
+            _vx *= -1
+            print('less')
+        # if contour_segment
+        vy.append(_vy)
+        vx.append(_vx)
+
+    angles = np.arctan2(np.array(vy), np.array(vx)).tolist()
+
+    for q in range(count):
+        if vx[q] < 0:
+            angles[q] += np.pi
+            print('less')
+
+    # # normalize
+    # pihalf = np.pi / 2
+    # angles = [angle[0] + pihalf for angle in angles]
+    angles = [angle[0] for angle in angles]
 
     print(count)
 
     plt.figure(1)
-    plt.subplot(211)
+    plt.clf()
+    plt.subplot(311)
     plt.plot(angles)
     plt.ylabel('angles')
 
     # we want raising positive angles - so derivation will be positive -> so we want to find minimum
     # todo check whether the angles are raising
     # not exactly discrete derivation
-    derivate = [ angles[(q - 1) % count] - angles[(q + 1) % count] for q in range(count)]
+    derivate = [ angles[(q + 1) % count] - angles[(q - 1) % count] for q in range(count)]
     # when subtracting 2pi -> 0.1 its negative -> we want it to be positive "and small"
-    npi2 = 2 * np.pi
-    derivate = [ diff + npi2 for diff in derivate if diff < 0 ]
 
-    plt.subplot(212)
+    plt.subplot(312)
+    plt.plot(derivate)
+    plt.ylabel('derivates not normalized')
+
+    npi2 = 2 * np.pi
+
+    for q in range(count):
+        if derivate[q] < 0:
+            derivate[q] += npi2
+
+    # derivate = [ derivate[(q + 1) % count] - derivate[(q - 1) % count] for q in range(count)]
+
+    plt.subplot(313)
     plt.plot(derivate)
     plt.ylabel('derivates')
     plt.show()
+    plt.draw()
 
     # corner_indexes = np.argpartition(np.array(derivate), -4)
-    corner_indexes = np.partition(np.array(derivate), 4)[-4:]
+    corner_indexes = np.partition(np.array(derivate), 4)[:4]
 
     print(corner_indexes)
 
