@@ -58,8 +58,8 @@ class C_observedTag:
         self.cntExternal = contours[0]
         return self.calcMoments()
 
-    def getExternalContour(self, imScene, external_contour_approx):
-        _, contours, hierarchy = cv2.findContours(imScene.copy(), cv2.RETR_EXTERNAL, external_contour_approx )
+    def getExternalContour(self, imScene):
+        _, contours, hierarchy = cv2.findContours(imScene.copy(), cv2.RETR_EXTERNAL, self.external_contour_approx )
         return contours[0]
 
     def addExternalContour(self, cntExternal): # returns 0 on success
@@ -190,9 +190,17 @@ class C_observedTag:
 
         # plt.ion()
         # time.sleep(1)
-        # corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= True)
+        corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= True)
 
-        corner_pts = self.findMinAreaRectRecoursive(model_tag)
+        # corner_pts = self.findMinAreaRectRecoursive(model_tag)
+        # corner_pts = self.findMinAreaRect_StableLineIntersection(model_tag)
+
+        # corners from FAST and then findStableLineIntersection
+        # FAST conrenrs
+
+        # contours inter and outer energies - only lines
+
+        # houghlines
 
         # tims[-1].stop()
 
@@ -216,6 +224,126 @@ class C_observedTag:
         drawDots(self.scene_markuped, self.dst_pts, self.color_corners) # draw corner points
         return self.error
 
+    def findMinAreaRect_StableLineIntersection(self, model_tag):
+
+        cnt = self.getExternalContour(self.imScene)
+
+        rect = cv2.minAreaRect(cnt)
+        dst_pts = cv2.boxPoints(rect)
+        src_pts = np.array(model_tag.ptsDetectArea)
+        # print(type(src_pts))
+
+        def get_it(src_pts, dst_pts):
+            mWarp2scene, _ = cv2.findHomography(src_pts, dst_pts, )
+
+            # get inverse transformation matrix
+            try:
+                mWarp2tag = np.linalg.inv(mWarp2scene)
+            except:
+                print("Cannot create inverse matrix. Singular warping matrix. MinAreaRect ")
+                self.set_error(Error.no_inverse_matrix)
+                return None
+
+            imWarped = cv2.warpPerspective(self.imScene.copy(), mWarp2tag, model_tag.imTagDetect.shape,
+                                           # flags = cv2.INTER_NEAREST )
+                                               flags=cv2.INTER_LINEAR )
+            return [mWarp2scene, mWarp2tag, imWarped]
+
+        back = get_it(src_pts, dst_pts)
+        if back is None:
+            return None
+        [minArea_to_scene, scene_to_minArea, imWarped1] = back
+
+
+        def make_gauss(im, a=55):
+            return cv2.GaussianBlur(im, (a, a), 0)
+
+        imWarped1 = make_gauss(imWarped1)
+
+        # cnt = self.getExternalContour(imWarped1)
+        self.external_contour_approx = cv2.CHAIN_APPROX_TC89_L1
+        # self.external_contour_approx = cv2.CHAIN_APPROX_TC89_KCOS
+        cnt = self.getExternalContour(imWarped1)
+
+        plot = False
+
+        corners_in_warped = findStableLineIntersection(cnt, self.external_contour_approx, plot=plot, half_interval=1)
+        if corners_in_warped is None:
+            return None
+        print(corners_in_warped)
+
+        back = get_it(np.array(corners_in_warped), dst_pts)
+        if back is None:
+            return None
+
+        [right_to_minArea, minArea_to_right, imWarped2] = back
+
+        # print(right_to_minArea.shape, minArea_to_scene.shape)
+        a = right_to_minArea
+        b = minArea_to_scene
+        c = scene_to_minArea
+        d = minArea_to_right
+        x1 = a
+        x2 = b
+        xx = [a,b]
+        # xx = [a,b,c]
+        # xx = [a,b,d] #
+        xx = [b,a,c] #
+        xx = [b,a,d]
+        xx = [a,c,b]
+        xx = [a,c,d]
+        xx = [a,d,b]
+        xx = [a,d,c]
+        xx = [b,a,c] #
+        xx = [b,a,d]
+        xx = [b,c,a]
+        xx = [b,c,d]
+        xx = [d,a,b]
+        xx = [d,a,c]
+        xx = [d,b,a]
+        xx = [d,b,c]
+        xx = [d,c,a]
+        xx = [d,c,b]
+
+        transformation = np.array(np.eye(3,3))
+        for x in xx:
+            transformation = matDot(transformation, np.array(x))
+        # transformation = np.matrix(matDot(np.array(x1),
+        #                                   np.array(x2)))
+
+        transformation = np.matrix(transformation)
+
+        if plot == True:
+            plt.figure(1)
+            sp = 311
+            # imWarpeds = [[imWarped1], [imWarped2]]
+            imWarpeds = [[self.imScene], [imWarped1]]
+            for imWarped in imWarpeds:
+                markuped_image = imWarped[0].copy()
+                drawDots(markuped_image, dst_pts)
+                plt.subplot(sp)
+                sp += 1
+                plt.imshow(markuped_image, cmap='gray')
+
+            contoured_image = imWarped1.copy()
+            drawContour(contoured_image , [cnt])
+            plt.imshow(contoured_image) # , cmap='gray')
+            plt.show()
+
+        corners = []
+        for q in range(4):
+            mat_point = np.transpose(np.matrix([corners_in_warped[q][0], corners_in_warped[q][1], 0]))
+
+            C = np.matrix(np.eye(3,1))
+            np.dot(np.matrix(transformation), mat_point, C)
+            xy = [C[0].tolist()[0], C[1].tolist()[0]]
+
+            corners.append(xy)
+
+        # print(corners)
+        return corners
+
+
     def findMinAreaRectRecoursive(self, model_tag):
 
         src_pts = model_tag.ptsDetectArea
@@ -223,12 +351,13 @@ class C_observedTag:
         to_scene = []
         to_tag = []
 
-        rounds = 20
+        rounds = 10
         markuped_images = []
 
+        tim = Timeas()
         image = self.imScene
         for q in range(rounds):
-            cnt = self.getExternalContour(image, self.external_contour_approx)
+            cnt = self.getExternalContour(image)
 
             rect = cv2.minAreaRect(cnt)
             dst_pts = cv2.boxPoints(rect)
@@ -250,12 +379,15 @@ class C_observedTag:
             imWarped = cv2.warpPerspective(image.copy(), mWarp2tag, model_tag.imTagDetect.shape,
                                                flags=cv2.INTER_LINEAR )
 
-            markuped_image = image.copy()
-            drawDots(markuped_image, dst_pts)
-            markuped_images.append([markuped_image])
+
 
             image = imWarped.copy()
 
+            markuped_image = imWarped.copy()
+            drawDots(markuped_image, dst_pts)
+            markuped_images.append([markuped_image])
+
+        tim.print()
 
         plt.figure(1)
         rows = round(np.sqrt(rounds))
@@ -273,7 +405,7 @@ class C_observedTag:
         for q in range(rounds-1, 0, -1):
             transformation = matDot(transformation , to_tag[q])
 
-        transformation = to_scene[0]
+        # transformation = to_scene[0]
 
         # only for drawing
         # find individual points in original scene
@@ -589,6 +721,9 @@ def colorify(im):
     else:
         return im.copy()
 
+def drawContour(im, cnt, color = 180, thickness = 1):
+    cv2.drawContours(im, cnt, 0, color, thickness)
+
 def drawDots(im, dots, numbers=1):
     i = 0
     for dot in dots:
@@ -727,21 +862,21 @@ import matplotlib
 # plt.ion()
 
 
-def findStableLineIntersection(cnt, external_contour_approx, plot = False):
+def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_interval=1, ):
     """
     Find points from countour which have the biggest change in direction of three consecutive pixels
     """
     norm = cv2.NORM_L2SQR
 
-    if external_contour_approx != cv2.CHAIN_APPROX_SIMPLE:
-        print('Cannot find contour direction drift from not continuous external contour')
-        return None
+    # if external_contour_approx != cv2.CHAIN_APPROX_SIMPLE:
+    #     print('Cannot find contour direction drift from not continuous external contour')
+    #     return None
 
-    half_interval = 1
     vy = []
     vx = []
     inv = []
     # circular list
+    # print(len(cnt))
     count = len(cnt)
     cnt = np.float32(cnt)
     # direction = np.eye(1,1)
@@ -757,7 +892,7 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False):
         first = q - half_interval
         last = q + half_interval
         contour_segment = np.array( [cnt[k % count][0] for k in range(first, last + 1)] )
-        [_vx, _vy, _, _] = cv2.fitLine(contour_segment, norm, 0, 0.1, 0.1)
+        [_vx, _vy, _, _] = cv2.fitLine(contour_segment, norm, 0, 0.5, 0.5)
 
         vec_ac = cnt[first % count][0] - cnt[last % count][0]
         # print(vec_ac)
