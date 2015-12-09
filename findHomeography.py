@@ -15,6 +15,7 @@ class Error(Enum):
     contour_too_small = 6
     some1 = 7
 
+import time
 
 class C_observedTag:
     # static class variable - known Tag
@@ -41,6 +42,8 @@ class C_observedTag:
         # self.external_contour_approx = cv2.CHAIN_APPROX_NONE
         # self.external_contour_approx = cv2.CHAIN_APPROX_TC89_L1
 
+        self.verbatim = False # if set to True the set_error function would print findTag error messages in default output stream
+
         self.minimum_contour_length = 4*4
 
     def calcMoments(self):  # returns 0 on success
@@ -62,8 +65,7 @@ class C_observedTag:
 
     def set_error(self, error):
         self.error = error
-        verbatim = True
-        if verbatim == True :
+        if self.verbatim == True :
             if error == Error.no_square_points:
                 print('Could not find square in image')
             elif error == Error.no_inverse_matrix:
@@ -163,20 +165,40 @@ class C_observedTag:
 
         im = self.imScene
         cnt = self.cntExternal
-        # corner_pts = findFromCenter(cnt, im, self.mc)
-
         # if len(cnt) < self.minimum_contour_length:
         #     print('aa',cnt)
         #     return self.set_error(Error.contour_too_small)
 
+        # tims = []
+        # tims.append(Timeas())
+        # corner_pts = findFromCenter(cnt, im, self.mc)
+        # tims[-1].stop()
+        #
+        # tims.append(Timeas())
         # corner_pts = findDirectionDrift(cnt, self.external_contour_approx)
+        # tims[-1].stop()
+        #
+        # tims.append(Timeas())
         corner_pts = findStableLineIntersection(cnt, self.external_contour_approx)
+        # tims[-1].stop()
+
+        # print('times','| '.join([tim.last() for tim in tims]))
 
 
-        if corner_pts is None or len(corner_pts) != 4 :
+        if corner_pts is None or len(corner_pts) != 4:
             return self.set_error(Error.no_square_points)
 
-        self.dst_pts = corner_pts
+        # for corner_pt in corner_pts:
+        #     for z in corner_pt:
+        #         if z is float('nan'):
+        #             self.set_error(Error.no_square_points)
+
+        [self.set_error(Error.no_square_points) for corner_pt in corner_pts for z in corner_pt if np.isnan(z)]
+        if self.error != Error.flawless:
+            return self.error
+
+
+        self.dst_pts = np.array(corner_pts)
         drawDots(self.scene_markuped, self.dst_pts, self.color_corners) # draw corner points
         return self.error
 
@@ -203,6 +225,37 @@ class C_observedTag:
                                    flags=cv2.INTER_LINEAR )
                                     #, , cv2.BORDER_CONSTANT)
 
+class Timeas:
+
+    def __init__(self, type='s2ms'):
+        self.start()
+        self.set_output_type(type)
+
+
+    def set_output_type(self, type):
+        self.type = type
+
+    def start(self):
+        self.time_start = time.time()
+
+    def stop(self):
+        self.time_end = time.time()
+        self.time_last = self.time_end - self.time_start
+
+    def now(self):
+        self.stop()
+        return self.last()
+
+    def print_last(self):
+        print(self.last())
+
+    def print(self):
+        self.stop()
+        print(self.last())
+
+    def last(self):
+        if self.type == 's2ms':
+            return '{00:.2f} ms'.format(round(self.time_last * 1000,2))
 
 
 
@@ -440,11 +493,12 @@ def colorify(im):
 def drawDots(im, dots, numbers=1):
     i = 0
     for dot in dots:
-        pt = [int(dot[0]),int(dot[1])]
+        pt = [int(dot[0]), int(dot[1])]
         # col = (255, 0, 0)
         col = 180
         sh_max = np.max(im.shape)
-        radius = np.int(sh_max  / 40)
+        # radius = np.int(sh_max  / 40)
+        radius = 1
         thickness = np.int(sh_max  / 140)
         cv2.circle(im, tuple(pt), radius, col, thickness )
         numbers = 1
@@ -574,7 +628,7 @@ import matplotlib
 # plt.ion()
 
 
-def findStableLineIntersection(cnt, external_contour_approx):
+def findStableLineIntersection(cnt, external_contour_approx, draw = False):
     """
     Find points from countour which have the biggest change in direction of three consecutive pixels
     """
@@ -592,10 +646,12 @@ def findStableLineIntersection(cnt, external_contour_approx):
     count = len(cnt)
     cnt = np.float32(cnt)
     # direction = np.eye(1,1)
-    #
-    plt.figure(1)
-    plt.clf()
-    sp = 610
+
+
+    if draw == True:
+        plt.figure(1)
+        plt.clf()
+        sp = 610
 
     for q in range(count):
         first = q - half_interval
@@ -630,17 +686,18 @@ def findStableLineIntersection(cnt, external_contour_approx):
 
     angles = np.arctan2(np.array(vy), np.array(vx)).tolist()
 
-    sp += 1
-    plt.subplot(sp)
-    plt.plot(inv)
-    plt.ylabel('inv ')
-    plt.xlim([0,count])
+    if draw == True:
+        sp += 1
+        plt.subplot(sp)
+        plt.plot(inv)
+        plt.ylabel('inv ')
+        plt.xlim([0,count])
 
-    sp += 1
-    plt.subplot(sp)
-    plt.plot(angles)
-    plt.ylabel('angles atan2')
-    plt.xlim([0,count])
+        sp += 1
+        plt.subplot(sp)
+        plt.plot(angles)
+        plt.ylabel('angles atan2')
+        plt.xlim([0,count])
 
     # # normalize
     # pihalf = np.pi / 2
@@ -653,13 +710,13 @@ def findStableLineIntersection(cnt, external_contour_approx):
             # print('less')
 
 
-    print(count)
 
-    sp += 1
-    plt.subplot(sp)
-    plt.plot(angles)
-    plt.ylabel('angles')
-    plt.xlim([0,count])
+    if draw == True:
+        sp += 1
+        plt.subplot(sp)
+        plt.plot(angles)
+        plt.ylabel('angles')
+        plt.xlim([0,count])
 
     # we want raising positive angles - so derivation will be positive -> so we want to find minimum
     # todo check whether the angles are raising
@@ -667,30 +724,33 @@ def findStableLineIntersection(cnt, external_contour_approx):
     derivate = [ angles[(q ) % count] - angles[(q-1) % count] for q in range(count)]
     # when subtracting 2pi -> 0.1 its negative -> we want it to be positive "and small"
 
-    sp += 1
-    plt.subplot(sp)
-    plt.plot(derivate)
-    plt.ylabel('derivates not normalized')
-    plt.xlim([0,count])
+    if draw == True:
+        sp += 1
+        plt.subplot(sp)
+        plt.plot(derivate)
+        plt.ylabel('derivates not normalized')
+        plt.xlim([0,count])
 
 
     # corner_indexes = np.argpartition(np.array(derivate), -4)
     # corner_indexes = np.partition(np.array(derivate), 4)[:4]
+
+    # find one minimum and 3 maximums
     diff = np.array(derivate)
     sorted_indexes = np.argpartition(diff,-3)
     max_indexes = (sorted_indexes[-3:]).tolist()
     min_index = [np.argmin(diff)]
     # print(sorted_indexes)
 
-    #
-    # sorted = diff[sorted_indexes]
-    # sp += 1
-    # plt.subplot(sp)
-    # plt.plot(sorted)
-    # plt.ylabel('sorted')
-    # plt.xlim([0,count])
+    if draw == True:
+        sorted = diff[sorted_indexes]
+        sp += 1
+        plt.subplot(sp)
+        plt.plot(sorted)
+        plt.ylabel('sorted')
+        plt.xlim([0,count])
 
-    # find one minimum and 3 maximums
+    # arrange them against indexes
     corner_indexes = np.sort(min_index + max_indexes)
 
     # between these peaks find zero diff level interval
@@ -701,33 +761,38 @@ def findStableLineIntersection(cnt, external_contour_approx):
     # from those indexes get cnt points into 4 cnt_intervals
     sides = [[], [], [], []]
     diff_limit = np.deg2rad(5)
-    print(diff_limit)
+    diff_abs = np.abs(diff)
+    # print(diff_limit)
+
     for q in range(4):
         for index in side_intervals[q]:
             # print(abs(diff[index]))
-            if abs(diff[index]) < diff_limit:
+            if diff_abs[index] < diff_limit:
                 sides[q].append(cnt[index][0])
-                plt.scatter(index % count, 0, marker='x')
+                if draw == True:
+                    plt.scatter(index % count, 0, marker='x')
+
 
     # fitLine for those 4 intervals
     lines = []
     for side in sides:
-        [_vx, _vy, _x0, _y0] = cv2.fitLine(np.array(side), norm, 0, 0.01, 0.01)
-        lines.append(np.array([[_x0, _y0], [_x0 + _vx, _y0 + _vy]]))
+        if len(side) > 1:
+            [_vx, _vy, _x0, _y0] = cv2.fitLine(np.array(side), norm, 0, 0.1, 0.01)
+            lines.append(np.array([[_x0, _y0], [_x0 + _vx, _y0 + _vy]]))
+        else:
+            return None
+
 
     corners = []
     for q in range(4):
-        corner = getIntersection(lines[q], lines[(q + 1) % 4])
-        print(corner)
-        # corners.append( np.array[corner[0].tolist(), corner[1].tolist()] )
-        corners.append( np.array([corner[0].tolist(), corner[1].tolist()]) )
-
+        corners.append(getIntersection(lines[q], lines[(q + 1) % 4]))
+    # print(np.array(corners))
     # get intersection of those 4 lines
-    
-    plt.show()
-    plt.draw()
 
-    # print (corners)
+    if draw == True:
+        plt.show()
+        plt.draw()
+
     return corners
 
 import sys
@@ -749,9 +814,10 @@ def getIntersection(line1, line2):
 
     x = (b2 - b1) / (a1 - a2)
     y = a1 * x + b1
-    return [x, y]
 
-def findDirectionDrift(cnt, external_contour_approx):
+    return [x[0], y[0]]
+
+def findDirectionDrift(cnt, external_contour_approx, draw = False):
     """
     Find points from countour which have the biggest change in direction of three consecutive pixels
     """
@@ -769,10 +835,11 @@ def findDirectionDrift(cnt, external_contour_approx):
     count = len(cnt)
     cnt = np.float32(cnt)
     # direction = np.eye(1,1)
-    #
-    plt.figure(1)
-    plt.clf()
-    sp = 510
+
+    if draw == True:
+        plt.figure(1)
+        plt.clf()
+        sp = 510
 
 
     for q in range(count):
@@ -807,16 +874,17 @@ def findDirectionDrift(cnt, external_contour_approx):
 
 
     angles = np.arctan2(np.array(vy), np.array(vx)).tolist()
-    #
-    sp += 1
-    plt.subplot(sp)
-    plt.plot(inv)
-    plt.ylabel('inv ')
 
-    sp += 1
-    plt.subplot(sp)
-    plt.plot(angles)
-    plt.ylabel('angles atan2')
+    if draw == True:
+        sp += 1
+        plt.subplot(sp)
+        plt.plot(inv)
+        plt.ylabel('inv ')
+
+        sp += 1
+        plt.subplot(sp)
+        plt.plot(angles)
+        plt.ylabel('angles atan2')
 
     # # normalize
     # pihalf = np.pi / 2
@@ -829,23 +897,22 @@ def findDirectionDrift(cnt, external_contour_approx):
             # print('less')
 
 
-    print(count)
-
-    sp += 1
-    plt.subplot(sp)
-    plt.plot(angles)
-    plt.ylabel('angles')
+    if draw == True:
+        sp += 1
+        plt.subplot(sp)
+        plt.plot(angles)
+        plt.ylabel('angles')
 
     # we want raising positive angles - so derivation will be positive -> so we want to find minimum
     # todo check whether the angles are raising
     # not exactly discrete derivation
     derivate = [ angles[(q ) % count] - angles[(q-1) % count] for q in range(count)]
     # when subtracting 2pi -> 0.1 its negative -> we want it to be positive "and small"
-
-    sp += 1
-    plt.subplot(sp)
-    plt.plot(derivate)
-    plt.ylabel('derivates not normalized')
+    if draw == True:
+        sp += 1
+        plt.subplot(sp)
+        plt.plot(derivate)
+        plt.ylabel('derivates not normalized')
 
 
     # corner_indexes = np.argpartition(np.array(derivate), -4)
@@ -856,20 +923,21 @@ def findDirectionDrift(cnt, external_contour_approx):
     min_index = [np.argmin(diff)]
     # print(sorted_indexes)
 
-
-    sorted = diff[sorted_indexes]
-    sp += 1
-    plt.subplot(sp)
-    plt.plot(sorted)
-    plt.ylabel('sorted')
+    if draw == True:
+        sorted = diff[sorted_indexes]
+        sp += 1
+        plt.subplot(sp)
+        plt.plot(sorted)
+        plt.ylabel('sorted')
 
     # find one minimum and 3 maximums
     corner_indexes = np.sort(min_index + max_indexes)
 
-    print(corner_indexes)
+    # print(corner_indexes)
     #
-    plt.show()
-    plt.draw()
+    if draw == True:
+        plt.show()
+        plt.draw()
 
 
     if len(corner_indexes) > 0:
