@@ -13,7 +13,7 @@ class Error(Enum):
     rotation_uncertainity = 4
     external_contour_error = 5
     contour_too_small = 6
-    some1 = 7
+    square_points_float_nan = 7
 
 import time
 
@@ -54,10 +54,13 @@ class C_observedTag:
         return 0
 
     def calcExternalContour(self): # returns 0 on success
-
         _, contours, hierarchy = cv2.findContours(self.imScene.copy(), cv2.RETR_EXTERNAL, self.external_contour_approx )
         self.cntExternal = contours[0]
         return self.calcMoments()
+
+    def getExternalContour(self, imScene, external_contour_approx):
+        _, contours, hierarchy = cv2.findContours(imScene.copy(), cv2.RETR_EXTERNAL, external_contour_approx )
+        return contours[0]
 
     def addExternalContour(self, cntExternal): # returns 0 on success
         self.cntExternal = cntExternal
@@ -75,7 +78,7 @@ class C_observedTag:
 
     def findWarpMatrix(self, model_tag): # returns 0 on succesfull matching
 
-        if self.findSquare() != Error.flawless:
+        if self.findSquare(model_tag) != Error.flawless:
             return self.error
 
         drawCentroid(self.scene_markuped, self.cntExternal, self.color_centroid) # DRAW centroid
@@ -146,14 +149,17 @@ class C_observedTag:
         # thresholded element-wise addition
         # procentual histogram - of seenTag vs of tagModel
 
-    def findSquare(self):  # returns 0 on succesfull findings
-        if self.cntExternal is None:
-            # print("Should I count the cntExternal now?")
-            if self.calcExternalContour() != 0:
-                print("Should I count the cntExternal now?")
-                return self.set_error(Error.external_contour_error)
+    def findSquare(self, model_tag):  # returns 0 on succesfull findings
+        #
+        # if self.cntExternal is None:
+        #     # print("Should I count the cntExternal now?")
+        #     self.calcExternalContour()
+        #     if self.calcMoments() != 0:
+                # print("Should I count the cntExternal now?")
+                # return self.set_error(Error.external_contour_error)
 
 
+        self.calcExternalContour()
 
         def findFromCenter(cnt,im,mc):
             # rotated boundingbox
@@ -162,6 +168,8 @@ class C_observedTag:
             # return findClosestToMinAreaRect(im,mc,box,cnt)
             # return findFarthestFromCenter(im,mc,box,cnt)
             return findClosestToMinAreaRectAndFarthestFromCenter(im, self.mc, box, cnt)
+            # return box
+
 
         im = self.imScene
         cnt = self.cntExternal
@@ -179,7 +187,13 @@ class C_observedTag:
         # tims[-1].stop()
         #
         # tims.append(Timeas())
-        corner_pts = findStableLineIntersection(cnt, self.external_contour_approx)
+
+        # plt.ion()
+        # time.sleep(1)
+        # corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= True)
+
+        corner_pts = self.findMinAreaRectRecoursive(model_tag)
+
         # tims[-1].stop()
 
         # print('times','| '.join([tim.last() for tim in tims]))
@@ -193,7 +207,7 @@ class C_observedTag:
         #         if z is float('nan'):
         #             self.set_error(Error.no_square_points)
 
-        [self.set_error(Error.no_square_points) for corner_pt in corner_pts for z in corner_pt if np.isnan(z)]
+        [self.set_error(Error.square_points_float_nan) for corner_pt in corner_pts for z in corner_pt if np.isnan(z)]
         if self.error != Error.flawless:
             return self.error
 
@@ -201,6 +215,91 @@ class C_observedTag:
         self.dst_pts = np.array(corner_pts)
         drawDots(self.scene_markuped, self.dst_pts, self.color_corners) # draw corner points
         return self.error
+
+    def findMinAreaRectRecoursive(self, model_tag):
+
+        src_pts = model_tag.ptsDetectArea
+        # list of transformation matrices of individual recoursive rounds
+        to_scene = []
+        to_tag = []
+
+        rounds = 20
+        markuped_images = []
+
+        image = self.imScene
+        for q in range(rounds):
+            cnt = self.getExternalContour(image, self.external_contour_approx)
+
+            rect = cv2.minAreaRect(cnt)
+            dst_pts = cv2.boxPoints(rect)
+
+            mWarp2scene, _ = cv2.findHomography(src_pts, dst_pts, )
+
+            to_scene.append(mWarp2scene)
+
+            # get inverse transformation matrix
+            try:
+                mWarp2tag = np.linalg.inv(mWarp2scene)
+            except:
+                print("Cannot create inverse matrix. Singular warping matrix. In findMinAreaRectRecoursive, round:", q+1)
+                self.set_error(Error.no_inverse_matrix)
+                return None
+
+            to_tag.append(mWarp2tag)
+
+            imWarped = cv2.warpPerspective(image.copy(), mWarp2tag, model_tag.imTagDetect.shape,
+                                               flags=cv2.INTER_LINEAR )
+
+            markuped_image = image.copy()
+            drawDots(markuped_image, dst_pts)
+            markuped_images.append([markuped_image])
+
+            image = imWarped.copy()
+
+
+        plt.figure(1)
+        rows = round(np.sqrt(rounds))
+        cols = np.ceil(rounds/rows)
+        sp = [rows, cols, 0]
+        for q in range(rounds):
+            sp[2] += 1
+            plt.subplot(*sp)
+            plt.imshow(markuped_images[q][0], cmap='gray')
+
+        plt.show()
+
+        transformation = np.eye(3)
+
+        for q in range(rounds-1, 0, -1):
+            transformation = matDot(transformation , to_tag[q])
+
+        transformation = to_scene[0]
+
+        # only for drawing
+        # find individual points in original scene
+        corners = []
+        for q in range(4):
+            # vec_point = src_pts[0]
+            # print(vec_point)
+            mat_point = np.transpose(np.matrix([src_pts[q][0], src_pts[q][1], 0]))
+
+            C = np.matrix(np.eye(3,1))
+            #
+            # print(mat_point)
+            # print(transformation)
+            # print(C)
+
+            np.dot(np.matrix(transformation), mat_point, C)
+            xy = [C[0].tolist()[0], C[1].tolist()[0]]
+
+            corners.append(xy)
+
+        # print(corners)
+        return corners
+
+        # # print (dst_pts)
+        # return dst_pts
+
 
     def calculate(self, model_tag):
 
@@ -510,7 +609,7 @@ def drawDots(im, dots, numbers=1):
         i += 1
     return im
 
-def findClosestToMinAreaRect(im,mc,box,cnt):
+def findClosestToMinAreaRect(im, mc, box, cnt):
     # find points from countour which are the closest (L2SQR) to minAreaRect!
     norm = cv2.NORM_L2SQR
     mc = np.float32(mc)
@@ -628,7 +727,7 @@ import matplotlib
 # plt.ion()
 
 
-def findStableLineIntersection(cnt, external_contour_approx, draw = False):
+def findStableLineIntersection(cnt, external_contour_approx, plot = False):
     """
     Find points from countour which have the biggest change in direction of three consecutive pixels
     """
@@ -648,10 +747,11 @@ def findStableLineIntersection(cnt, external_contour_approx, draw = False):
     # direction = np.eye(1,1)
 
 
-    if draw == True:
+    if plot == True:
         plt.figure(1)
         plt.clf()
         sp = 610
+        markers = ['x','o','+','s']
 
     for q in range(count):
         first = q - half_interval
@@ -686,7 +786,7 @@ def findStableLineIntersection(cnt, external_contour_approx, draw = False):
 
     angles = np.arctan2(np.array(vy), np.array(vx)).tolist()
 
-    if draw == True:
+    if plot == True:
         sp += 1
         plt.subplot(sp)
         plt.plot(inv)
@@ -704,14 +804,16 @@ def findStableLineIntersection(cnt, external_contour_approx, draw = False):
     # angles = [angle[0] + pihalf for angle in angles]
     angles = [angle[0] for angle in angles]
 
+    pi2 = 2 * np.pi
     for q in range(count):
         if inv[q] > 0:
-            angles[q] += np.pi
+            # angles[q] += np.pi
+            angles[q] += pi2
             # print('less')
 
 
 
-    if draw == True:
+    if plot == True:
         sp += 1
         plt.subplot(sp)
         plt.plot(angles)
@@ -724,7 +826,7 @@ def findStableLineIntersection(cnt, external_contour_approx, draw = False):
     derivate = [ angles[(q ) % count] - angles[(q-1) % count] for q in range(count)]
     # when subtracting 2pi -> 0.1 its negative -> we want it to be positive "and small"
 
-    if draw == True:
+    if plot == True:
         sp += 1
         plt.subplot(sp)
         plt.plot(derivate)
@@ -742,7 +844,7 @@ def findStableLineIntersection(cnt, external_contour_approx, draw = False):
     min_index = [np.argmin(diff)]
     # print(sorted_indexes)
 
-    if draw == True:
+    if plot == True:
         sorted = diff[sorted_indexes]
         sp += 1
         plt.subplot(sp)
@@ -760,17 +862,18 @@ def findStableLineIntersection(cnt, external_contour_approx, draw = False):
 
     # from those indexes get cnt points into 4 cnt_intervals
     sides = [[], [], [], []]
-    diff_limit = np.deg2rad(5)
+    diff_limit = np.deg2rad(15)
     diff_abs = np.abs(diff)
     # print(diff_limit)
+
 
     for q in range(4):
         for index in side_intervals[q]:
             # print(abs(diff[index]))
             if diff_abs[index] < diff_limit:
                 sides[q].append(cnt[index][0])
-                if draw == True:
-                    plt.scatter(index % count, 0, marker='x')
+                if plot == True:
+                    plt.scatter(index % count, 0, marker=markers[q])
 
 
     # fitLine for those 4 intervals
@@ -789,7 +892,7 @@ def findStableLineIntersection(cnt, external_contour_approx, draw = False):
     # print(np.array(corners))
     # get intersection of those 4 lines
 
-    if draw == True:
+    if plot == True:
         plt.show()
         plt.draw()
 
@@ -817,7 +920,7 @@ def getIntersection(line1, line2):
 
     return [x[0], y[0]]
 
-def findDirectionDrift(cnt, external_contour_approx, draw = False):
+def findDirectionDrift(cnt, external_contour_approx, plot = False):
     """
     Find points from countour which have the biggest change in direction of three consecutive pixels
     """
@@ -836,7 +939,7 @@ def findDirectionDrift(cnt, external_contour_approx, draw = False):
     cnt = np.float32(cnt)
     # direction = np.eye(1,1)
 
-    if draw == True:
+    if plot == True:
         plt.figure(1)
         plt.clf()
         sp = 510
@@ -875,7 +978,7 @@ def findDirectionDrift(cnt, external_contour_approx, draw = False):
 
     angles = np.arctan2(np.array(vy), np.array(vx)).tolist()
 
-    if draw == True:
+    if plot == True:
         sp += 1
         plt.subplot(sp)
         plt.plot(inv)
@@ -897,7 +1000,7 @@ def findDirectionDrift(cnt, external_contour_approx, draw = False):
             # print('less')
 
 
-    if draw == True:
+    if plot == True:
         sp += 1
         plt.subplot(sp)
         plt.plot(angles)
@@ -908,7 +1011,7 @@ def findDirectionDrift(cnt, external_contour_approx, draw = False):
     # not exactly discrete derivation
     derivate = [ angles[(q ) % count] - angles[(q-1) % count] for q in range(count)]
     # when subtracting 2pi -> 0.1 its negative -> we want it to be positive "and small"
-    if draw == True:
+    if plot == True:
         sp += 1
         plt.subplot(sp)
         plt.plot(derivate)
@@ -923,7 +1026,7 @@ def findDirectionDrift(cnt, external_contour_approx, draw = False):
     min_index = [np.argmin(diff)]
     # print(sorted_indexes)
 
-    if draw == True:
+    if plot == True:
         sorted = diff[sorted_indexes]
         sp += 1
         plt.subplot(sp)
@@ -935,7 +1038,7 @@ def findDirectionDrift(cnt, external_contour_approx, draw = False):
 
     # print(corner_indexes)
     #
-    if draw == True:
+    if plot == True:
         plt.show()
         plt.draw()
 
