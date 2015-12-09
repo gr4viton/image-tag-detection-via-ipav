@@ -149,8 +149,7 @@ class C_observedTag:
             # print("Should I count the cntExternal now?")
             if self.calcExternalContour() != 0:
                 print("Should I count the cntExternal now?")
-                self.set_error(Error.external_contour_error)
-                return 42
+                return self.set_error(Error.external_contour_error)
 
 
 
@@ -724,7 +723,7 @@ def findStableLineIntersection(cnt, external_contour_approx):
         corners.append( np.array([corner[0].tolist(), corner[1].tolist()]) )
 
     # get intersection of those 4 lines
-
+    
     plt.show()
     plt.draw()
 
