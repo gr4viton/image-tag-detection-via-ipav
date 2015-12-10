@@ -44,7 +44,7 @@ class C_observedTag:
 
         self.verbatim = False # if set to True the set_error function would print findTag error messages in default output stream
 
-        self.minimum_contour_length = 4*4
+        self.minimum_contour_length = 4
 
     def calcMoments(self):  # returns 0 on success
         self.mu = cv2.moments(self.cntExternal)
@@ -173,9 +173,9 @@ class C_observedTag:
 
         im = self.imScene
         cnt = self.cntExternal
-        # if len(cnt) < self.minimum_contour_length:
-        #     print('aa',cnt)
-        #     return self.set_error(Error.contour_too_small)
+        if len(cnt) < self.minimum_contour_length:
+            print('aa',cnt)
+            return self.set_error(Error.contour_too_small)
 
         # tims = []
         # tims.append(Timeas())
@@ -188,9 +188,14 @@ class C_observedTag:
         #
         # tims.append(Timeas())
 
-        # plt.ion()
-        # time.sleep(1)
-        corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= True)
+        plt.ion()
+        def make_gauss(im, a=5):
+            return cv2.GaussianBlur(im, (a, a), 0)
+
+        cnt = self.getExternalContour( make_gauss(self.imScene))
+        corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= True, half_interval=1)
+
+        time.sleep(10)
 
         # corner_pts = self.findMinAreaRectRecoursive(model_tag)
         # corner_pts = self.findMinAreaRect_StableLineIntersection(model_tag)
@@ -1028,8 +1033,8 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
     # get intersection of those 4 lines
 
     if plot == True:
+        # plt.draw()
         plt.show()
-        plt.draw()
 
     return corners
 
