@@ -188,14 +188,15 @@ class C_observedTag:
         #
         # tims.append(Timeas())
 
-        plt.ion()
+        # plt.ion()
         def make_gauss(im, a=5):
             return cv2.GaussianBlur(im, (a, a), 0)
 
         cnt = self.getExternalContour( make_gauss(self.imScene))
         corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= True, half_interval=1)
+        # corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= False, half_interval=1)
 
-        time.sleep(10)
+        # time.sleep(10)
 
         # corner_pts = self.findMinAreaRectRecoursive(model_tag)
         # corner_pts = self.findMinAreaRect_StableLineIntersection(model_tag)
@@ -889,6 +890,8 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
 
     if plot == True:
         plt.figure(1)
+        thismanager = plt.get_current_fig_manager()
+        thismanager.window.wm_geometry("+0+0")
         plt.clf()
         sp = 610
         markers = ['x','o','+','s']
@@ -984,13 +987,6 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
     min_index = [np.argmin(diff)]
     # print(sorted_indexes)
 
-    if plot == True:
-        sorted = diff[sorted_indexes]
-        sp += 1
-        plt.subplot(sp)
-        plt.plot(sorted)
-        plt.ylabel('sorted')
-        plt.xlim([0,count])
 
     # arrange them against indexes
     corner_indexes = np.sort(min_index + max_indexes)
@@ -1016,6 +1012,22 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
                     plt.scatter(index % count, 0, marker=markers[q])
 
 
+    if plot == True:
+        sorted = diff[sorted_indexes]
+        sp += 1
+        plt.subplot(sp)
+        plt.plot(sorted)
+        plt.ylabel('sorted')
+        plt.xlim([0,count])
+
+        sp +=1
+        plt.subplot(sp)
+        # plt.plot(zip(cnt))
+        for q in range(4):
+            for index in side_intervals[q]:
+                for index in side_intervals[q]:
+                    plt.scatter(cnt[index % count][0][0], cnt[index % count][0][1], marker=markers[q])
+
     # fitLine for those 4 intervals
     lines = []
     for side in sides:
@@ -1033,7 +1045,7 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
     # get intersection of those 4 lines
 
     if plot == True:
-        # plt.draw()
+        plt.draw()
         plt.show()
 
     return corners
