@@ -38,9 +38,10 @@ class C_observedTag:
 
         self.color_corners = 160
         self.color_centroid = 180
-        self.external_contour_approx = cv2.CHAIN_APPROX_SIMPLE
+        # self.external_contour_approx = cv2.CHAIN_APPROX_SIMPLE
         # self.external_contour_approx = cv2.CHAIN_APPROX_NONE
         # self.external_contour_approx = cv2.CHAIN_APPROX_TC89_L1
+        self.external_contour_approx = cv2.CHAIN_APPROX_TC89_KCOS
 
         self.verbatim = False # if set to True the set_error function would print findTag error messages in default output stream
 
@@ -174,7 +175,7 @@ class C_observedTag:
         im = self.imScene
         cnt = self.cntExternal
         if len(cnt) < self.minimum_contour_length:
-            print('aa',cnt)
+            # print('aa',cnt)
             return self.set_error(Error.contour_too_small)
 
         # tims = []
@@ -192,7 +193,10 @@ class C_observedTag:
         def make_gauss(im, a=5):
             return cv2.GaussianBlur(im, (a, a), 0)
 
-        cnt = self.getExternalContour( make_gauss(self.imScene))
+        # cnt = self.getExternalContour( make_gauss(self.imScene))
+        cnt = self.getExternalContour( self.imScene)
+        # corner_pts = self.findApproxPolyDP(cnt)
+
         corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= True, half_interval=1)
         # corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= False, half_interval=1)
 
@@ -229,6 +233,21 @@ class C_observedTag:
         self.dst_pts = np.array(corner_pts)
         drawDots(self.scene_markuped, self.dst_pts, self.color_corners) # draw corner points
         return self.error
+
+    def findApproxPolyDP(self,cnt):
+
+        # squares = []
+        def angle_cos(p0, p1, p2):
+            d1, d2 = (p0-p1).astype('float'), (p2-p1).astype('float')
+            return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
+
+        cnt_len = cv2.arcLength(cnt, True)
+        cnt = cv2.approxPolyDP(cnt, 0.02*cnt_len, True)
+        if len(cnt) == 4 and cv2.contourArea(cnt) > 10 and cv2.isContourConvex(cnt):
+            cnt = cnt.reshape(-1, 2)
+            max_cos = np.max([angle_cos( cnt[i], cnt[(i+1) % 4], cnt[(i+2) % 4] ) for i in range(4)])
+            # if max_cos < 0.1:
+            return cnt
 
     def findMinAreaRect_StableLineIntersection(self, model_tag):
 
@@ -868,6 +887,8 @@ import matplotlib
 # plt.ion()
 
 
+import matplotlib.gridspec as gridspec
+
 def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_interval=1, ):
     """
     Find points from countour which have the biggest change in direction of three consecutive pixels
@@ -893,7 +914,7 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
         thismanager = plt.get_current_fig_manager()
         thismanager.window.wm_geometry("+0+0")
         plt.clf()
-        sp = 610
+        sp = 910
         markers = ['x','o','+','s']
     print('b')
     for q in range(count):
@@ -1026,6 +1047,7 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
 
         sp +=1
         plt.subplot(sp)
+        # plt.subplot2grid((9,1), (sp, 1), rowspan=1)
         plt.axis('equal')
         for q in range(4):
             for index in side_intervals[q]:
