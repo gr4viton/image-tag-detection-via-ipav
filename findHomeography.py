@@ -56,7 +56,8 @@ class C_observedTag:
 
     def calcExternalContour(self): # returns 0 on success
         _, contours, hierarchy = cv2.findContours(self.imScene.copy(), cv2.RETR_EXTERNAL, self.external_contour_approx )
-        self.cntExternal = contours[0]
+        if len(contours) != 0:
+            self.cntExternal = contours[0]
         return self.calcMoments()
 
     def getExternalContour(self, imScene):
@@ -197,8 +198,8 @@ class C_observedTag:
         cnt = self.getExternalContour( self.imScene)
         # corner_pts = self.findApproxPolyDP(cnt)
 
-        corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= True, half_interval=1)
-        # corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= False, half_interval=1)
+        # corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= True, half_interval=1)
+        corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= False, half_interval=1)
 
         # time.sleep(10)
 
@@ -916,7 +917,9 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
         plt.clf()
         sp = 910
         markers = ['x','o','+','s']
-    print('b')
+    # print('b')
+
+
     for q in range(count):
         first = q - half_interval
         last = q + half_interval
@@ -928,6 +931,13 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
         coef = 1
         if vec_ac[1] < 0:
             coef = -1
+
+        # shift of one
+        if coef == 1:
+            if len(inv) > 0:
+                if inv[-1] == -1:
+                    inv_index = len(inv)
+
             # print('-1')
         # vec1 = np.matrix([cnt[first % count][0] - cnt[q][0]])
         # vec2 = np.matrix([cnt[q][0] - cnt[last % count][0]])
@@ -947,6 +957,8 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
         vx.append(_vx)
         inv.append(coef)
 
+    # shift of one - better for squares viewed from big angle
+    inv[inv_index] = -1
 
     angles = np.arctan2(np.array(vy), np.array(vx)).tolist()
 
@@ -954,13 +966,15 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
         print('plotting inv & angles atan2')
         sp += 1
         plt.subplot(sp)
-        plt.plot(inv)
+
+        plt.plot( inv )
         plt.ylabel('inv ')
         plt.xlim([0,count])
 
         sp += 1
         plt.subplot(sp)
-        plt.plot(angles)
+        ang = [angle[0]*180/np.pi for angle in angles]
+        plt.plot(ang)
         plt.ylabel('angles atan2')
         plt.xlim([0,count])
 
@@ -982,7 +996,7 @@ def findStableLineIntersection(cnt, external_contour_approx, plot = False, half_
         print('plotting angles')
         sp += 1
         plt.subplot(sp)
-        plt.plot(angles)
+        plt.plot([angle*180/np.pi for angle in angles])
         plt.ylabel('angles')
         plt.xlim([0,count])
 
