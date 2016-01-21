@@ -79,8 +79,8 @@ class FindtagControl():
         self.init_findtag()
         self.execution_time_len = 50
         self.execution_time = []
-        self.resolution_div = 0.5
-        self._step_control = StepControl(self.resolution_div, self.model_tag)
+        self.resolution_multiplier = 0.5
+        self._step_control = StepControl(self.resolution_multiplier, self.model_tag)
 
     def init_findtag(self):
         self.model_tag = fh.read_model_tag('2L')
@@ -113,7 +113,7 @@ class FindtagControl():
 
     def findtag(self):
         start = time.time()
-        self._step_control.step_all(self.capture_control.frame, self.resolution_div )
+        self._step_control.step_all(self.capture_control.frame, self.resolution_multiplier )
         end = time.time()
         self.add_exec_times(end-start)
 
@@ -131,8 +131,8 @@ class FindtagControl():
             if running_findtag:
                 self.findtag()
 
-    def set_resolution_div(self, div):
-        self.resolution_div = div
+    def set_resolution_div(self, resolution_multiplier):
+        self.resolution_multiplier = resolution_multiplier
 
 class CaptureControl():
     """

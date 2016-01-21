@@ -21,7 +21,7 @@ class C_observedTag:
     # static class variable - known Tag
     # tagModels = loadTagModels('2L')
 
-    def __init__(self, imTagInScene, scene_markuped):
+    def __init__(self, imTagInScene, external_contour, scene_markuped):
         self.imScene = imTagInScene # image of scene in which the tag is supposed to be
         self.imWarped = None # ground floor image of tag transformed from imScene
         # self.tag_warped = None # warped tag image into model_tag space
@@ -29,7 +29,7 @@ class C_observedTag:
         self.dst_pts = None # perspectively deformed detectionArea square corner points
         self.mWarp2tag = None # transformation matrix from perspective scene to ground floor tag
         self.mWarp2scene = None # transformation matrix from ground floor tag to perspective scene
-        self.cntExternal = None # detectionArea external contour
+        self.cntExternal = external_contour # detectionArea external contour
         self.mu = None # all image moments
         self.mc = None # central moment
         self.rotation = None # square symbols in symbolArea check possible rotations similar to cTagModel - [0,90,180,270]deg
@@ -38,6 +38,7 @@ class C_observedTag:
 
         self.color_corners = 160
         self.color_centroid = 180
+
         # self.external_contour_approx = cv2.CHAIN_APPROX_SIMPLE
         # self.external_contour_approx = cv2.CHAIN_APPROX_NONE
         # self.external_contour_approx = cv2.CHAIN_APPROX_TC89_L1
@@ -86,12 +87,10 @@ class C_observedTag:
         drawCentroid(self.scene_markuped, self.cntExternal, self.color_centroid) # DRAW centroid
 
         # self.mWarp2tag, mask= cv2.findHomography(src_pts, self.dst_pts, cv2.RANSAC, 5.0)
+
         # method = cv2.LMEDS
         src_pts = model_tag.ptsDetectArea
-
         self.mWarp2scene, _ = cv2.findHomography(src_pts, self.dst_pts, )
-        # matchesMask = mask.ravel().tolist()
-        # what is mask ?!
 
         # get inverse transformation matrix
         try:
@@ -161,7 +160,7 @@ class C_observedTag:
                 # return self.set_error(Error.external_contour_error)
 
 
-        self.calcExternalContour()
+        # self.calcExternalContour()
 
         def findFromCenter(cnt,im,mc):
             # rotated boundingbox
@@ -195,11 +194,11 @@ class C_observedTag:
             return cv2.GaussianBlur(im, (a, a), 0)
 
         # cnt = self.getExternalContour( make_gauss(self.imScene))
-        cnt = self.getExternalContour( self.imScene)
-        # corner_pts = self.findApproxPolyDP(cnt)
+        # cnt = self.getExternalContour( self.imScene)
+        corner_pts = self.findApproxPolyDP(cnt)
 
         # corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= True, half_interval=1)
-        corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= False, half_interval=1)
+        # corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= False, half_interval=1)
 
         # time.sleep(10)
 
@@ -465,7 +464,7 @@ class C_observedTag:
         # if self.addExternalContour(self.cntExternal) != 0:
         #     print('added_external contour')
         #     continue
-        self.addExternalContour(self.cntExternal)
+        # self.addExternalContour(self.cntExternal)
         self.findWarpMatrix(model_tag)
         # if self.findWarpMatrix(model_tag) == Error.flawless:
             # self.tag_warped = self.drawSceneWarpedToTag(model_tag)

@@ -67,9 +67,22 @@ def imclearborder(im, radius, buffer):
     # imgBWcopy = imgBWcopy
     return buffer
 
+def extractContourArea(im_scene, external_contour):
+    mask = np.uint8( np.zeros(im_scene.shape) )
+    col = 1
+    cv2.drawContours(mask, external_contour, 0, col, -1)
+
+    scene_with_tag = np.uint8( np.zeros(im_scene.shape) )
+    cv2.bitwise_and(mask, im_scene.copy(), scene_with_tag)
+    scene_with_tag = scene_with_tag * 255
+
+    return scene_with_tag
+
 def findTags(im_scene, model_tag):
 
+    # first create copy of scene (not to be contoured)
     scene_markuped = im_scene.copy()
+
     # _, contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
     _, external_contours, hierarchy = cv2.findContours(im_scene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
     # _, external_contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE )
@@ -77,46 +90,66 @@ def findTags(im_scene, model_tag):
 
     seen_tags = []
 
-    # find bounding boxes etc
-    for q in np.arange(len(external_contours)):
+    # for every external contour area
+    for external_contour in external_contours:
 
-        # # remove all inner contours
-        # if hierarchy[0][q][3] != -1:
-        #     continue
+        # zero out everything but the tag area
+        scene_with_tag = extractContourArea(im_scene, external_contour)
 
-        cnt = external_contours[q]
+        # initialize observed tag
+        observed_tag = fh.C_observedTag(scene_with_tag, external_contour, scene_markuped)
 
-        # slice out scene_tag
-        mask = np.uint8( np.zeros(im_scene.shape) )
-        col = 1
-        cv2.drawContours(mask, external_contours, q, col, -1)
-
-        scene_tag = np.uint8( np.zeros(im_scene.shape) )
-        cv2.bitwise_and(mask, im_scene.copy(), scene_tag)
-        scene_tag = scene_tag * 255
-
-        # # find out euler number
-        # _, tagCnt, hie = cv2.findContours(scene_tag.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        # if hie is None: continue
-        # if len(hie) == 0: continue
-        # hie = hie[0]
-        # innerSquaresCount = 2
-        # cntNumMin = 2  # case of joined inner squares
-        # cntNumMax = 1 + innerSquaresCount
-
-        # if len(hie) >= cntNumMin and len(hie) <= cntNumMax:
-        #     imTags.append(scene_tag)
-        #     # imTags = imIn[y:y+h,x:x+w]
-
-        # if it sustains tha check of some kind
-
-        observed_tag = fh.C_observedTag(scene_tag, scene_markuped)
-        # observed_tag = fh.C_observedTag(scene_tag, None)
+        # find out if the tag is in the area
         observed_tag.calculate(model_tag)
 
+        # append it to seen tags list
         seen_tags.append(observed_tag)
 
     return scene_markuped, seen_tags
+
+    # # for every external contour area
+    # for q in np.arange(len(external_contours)):
+    #
+    #     # leave only the biggest contour
+    #     # ?? - gets rid of the "noise"
+    #
+    #
+    #     # # remove all inner contours
+    #     # if hierarchy[0][q][3] != -1:
+    #     #     continue
+    #
+    #     # zero out everything but the tag
+    #     mask = np.uint8( np.zeros(im_scene.shape) )
+    #     col = 1
+    #     cv2.drawContours(mask, external_contours, q, col, -1)
+    #
+    #     scene_with_tag = np.uint8( np.zeros(im_scene.shape) )
+    #     cv2.bitwise_and(mask, im_scene.copy(), scene_with_tag)
+    #     scene_with_tag = scene_with_tag * 255
+    #     scene_with_tag = extractContourArea(im_scene, external_contour)
+    #
+    #     # # find out euler number
+    #     # _, tagCnt, hie = cv2.findContours(scene_with_tag.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    #     # if hie is None: continue
+    #     # if len(hie) == 0: continue
+    #     # hie = hie[0]
+    #     # innerSquaresCount = 2
+    #     # cntNumMin = 2  # case of joined inner squares
+    #     # cntNumMax = 1 + innerSquaresCount
+    #
+    #     # if len(hie) >= cntNumMin and len(hie) <= cntNumMax:
+    #     #     imTags.append(scene_with_tag)
+    #     #     # imTags = imIn[y:y+h,x:x+w]
+    #
+    #     # if it sustains tha check of some kind
+    #
+    #     observed_tag = fh.C_observedTag(scene_with_tag, scene_markuped)
+    #     # observed_tag = fh.C_observedTag(scene_with_tag, None)
+    #     observed_tag.calculate(model_tag)
+    #
+    #     seen_tags.append(observed_tag)
+    #
+    # return scene_markuped, seen_tags
 
 def bwareaopen(imgBW, areaPixels,col = 0):
     # Given a black and white image, first find all of its contours
@@ -228,13 +261,13 @@ class StepControl():
 
     def __init__(self, div, model_tag):
         self.steps = []
-        self.div = div
+        self.resolution_multiplier = div
         self.model_tag = model_tag
 
         def make_nothing(im):
             return im
         def make_resize(im):
-            return cv2.resize(im, (0, 0), fx=self.div, fy=self.div)
+            return cv2.resize(im, (0, 0), fx=self.resolution_multiplier, fy=self.resolution_multiplier)
         def make_gray(im):
             return cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
 
@@ -307,8 +340,8 @@ class StepControl():
             im = step.run(im)
         self.ret = im
 
-    def step_all(self, im, div):
-        self.div = div
+    def step_all(self, im, resolution_multiplier):
+        self.resolution_multiplier = resolution_multiplier
         self.run_all(im)
 
 
@@ -347,5 +380,7 @@ if __name__ == '__main__':
     # cv2.createTrackbar("trackMe", "image", tbValue, maxValue, update)
     # loopCV(cap)
     cap.release()
+        # cnt = external_contours[q]
+
     cv2.destroyAllWindows()
 
