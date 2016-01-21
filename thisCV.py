@@ -70,7 +70,7 @@ def imclearborder(im, radius, buffer):
 def extractContourArea(im_scene, external_contour):
     mask = np.uint8( np.zeros(im_scene.shape) )
     col = 1
-    cv2.drawContours(mask, external_contour, 0, col, -1)
+    cv2.drawContours(mask, [external_contour], 0, col, -1)
 
     scene_with_tag = np.uint8( np.zeros(im_scene.shape) )
     cv2.bitwise_and(mask, im_scene.copy(), scene_with_tag)
@@ -84,7 +84,7 @@ def findTags(im_scene, model_tag):
     scene_markuped = im_scene.copy()
 
     # _, contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
-    _, external_contours, hierarchy = cv2.findContours(im_scene, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
+    _, external_contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
     # _, external_contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE )
     # _, contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
 
@@ -96,8 +96,11 @@ def findTags(im_scene, model_tag):
         # zero out everything but the tag area
         scene_with_tag = extractContourArea(im_scene, external_contour)
 
+
+
         # initialize observed tag
         observed_tag = fh.C_observedTag(scene_with_tag, external_contour, scene_markuped)
+
 
         # find out if the tag is in the area
         observed_tag.calculate(model_tag)

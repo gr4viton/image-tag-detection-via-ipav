@@ -49,6 +49,8 @@ class C_observedTag:
 
         self.minimum_contour_length = 4
 
+
+
     def calcMoments(self):  # returns 0 on success
         self.mu = cv2.moments(self.cntExternal)
         if self.mu['m00'] == 0:
@@ -98,7 +100,6 @@ class C_observedTag:
             self.mWarp2tag = np.linalg.inv(self.mWarp2scene)
         except:
             # raise Exception('Cannot calculate inverse matrix.')
-
             # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
             return self.set_error(Error.no_inverse_matrix)
 
@@ -147,74 +148,27 @@ class C_observedTag:
 
             self.rotIdx = np.sum([ i*self.rotation[i] for i in range(0,4) ])
             self.mWarp2tag = matDot(model_tag.mInvRotTra[self.rotIdx], self.mWarp2tag)
-        return self.error
         # thresholded element-wise addition
         # procentual histogram - of seenTag vs of tagModel
 
+        return self.error
+
+
     def findSquare(self, model_tag):  # returns 0 on succesfull findings
-        #
-        # if self.cntExternal is None:
-        #     # print("Should I count the cntExternal now?")
-        #     self.calcExternalContour()
-        #     if self.calcMoments() != 0:
-                # print("Should I count the cntExternal now?")
-                # return self.set_error(Error.external_contour_error)
 
-
-        # self.calcExternalContour()
-
-        def findFromCenter(cnt,im,mc):
-            # rotated boundingbox
-            rect = cv2.minAreaRect(cnt)
-            box = cv2.boxPoints(rect)
-            # return sq.findClosestToMinAreaRect(im,mc,box,cnt)
-            # return sq.findFarthestFromCenter(im,mc,box,cnt)
-            return sq.findClosestToMinAreaRectAndFarthestFromCenter(im, self.mc, box, cnt)
-            # return box
-
-
-        im = self.imScene
         cnt = self.cntExternal
         if len(cnt) < self.minimum_contour_length:
             # print('aa',cnt)
             return self.set_error(Error.contour_too_small)
 
-        # tims = []
-        # tims.append(Timeas())
-        # corner_pts = findFromCenter(cnt, im, self.mc)
-        # tims[-1].stop()
-        #
-        # tims.append(Timeas())
-        # corner_pts = findDirectionDrift(cnt, self.external_contour_approx)
-        # tims[-1].stop()
-        #
-        # tims.append(Timeas())
-
-        # plt.ion()
-        def make_gauss(im, a=5):
-            return cv2.GaussianBlur(im, (a, a), 0)
-
-        # cnt = self.getExternalContour( make_gauss(self.imScene))
-        # cnt = self.getExternalContour( self.imScene)
         corner_pts = self.findApproxPolyDP(cnt)
-
-        # corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= True, half_interval=1)
-        # corner_pts = findStableLineIntersection(cnt, self.external_contour_approx, plot= False, half_interval=1)
-
-        # time.sleep(10)
-
-        # corner_pts = self.findMinAreaRectRecoursive(model_tag)
-        # corner_pts = self.findMinAreaRect_StableLineIntersection(model_tag)
+        #corner_pts = cornerSubPix #- shiThomasi
 
         # corners from FAST and then findStableLineIntersection
-        # FAST conrenrs
-
         # contours inter and outer energies - only lines
-
         # houghlines
 
         # tims[-1].stop()
-
         # print('times','| '.join([tim.last() for tim in tims]))
 
 
@@ -236,8 +190,6 @@ class C_observedTag:
         return self.error
 
     def findApproxPolyDP(self,cnt):
-
-        # squares = []
         def angle_cos(p0, p1, p2):
             d1, d2 = (p0-p1).astype('float'), (p2-p1).astype('float')
             return abs( np.dot(d1, d2) / np.sqrt( np.dot(d1, d1)*np.dot(d2, d2) ) )
@@ -250,222 +202,7 @@ class C_observedTag:
             # if max_cos < 0.1:
             return cnt
 
-    def findMinAreaRect_StableLineIntersection(self, model_tag):
-
-        cnt = self.getExternalContour(self.imScene)
-
-        rect = cv2.minAreaRect(cnt)
-        dst_pts = cv2.boxPoints(rect)
-        src_pts = np.array(model_tag.ptsDetectArea)
-        # print(type(src_pts))
-
-        def get_it(src_pts, dst_pts):
-            mWarp2scene, _ = cv2.findHomography(src_pts, dst_pts, )
-
-            # get inverse transformation matrix
-            try:
-                mWarp2tag = np.linalg.inv(mWarp2scene)
-            except:
-                print("Cannot create inverse matrix. Singular warping matrix. MinAreaRect ")
-                self.set_error(Error.no_inverse_matrix)
-                return None
-
-            imWarped = cv2.warpPerspective(self.imScene.copy(), mWarp2tag, model_tag.imTagDetect.shape,
-                                           # flags = cv2.INTER_NEAREST )
-                                               flags=cv2.INTER_LINEAR )
-            return [mWarp2scene, mWarp2tag, imWarped]
-
-        back = get_it(src_pts, dst_pts)
-        if back is None:
-            return None
-        [minArea_to_scene, scene_to_minArea, imWarped1] = back
-
-
-        def make_gauss(im, a=55):
-            return cv2.GaussianBlur(im, (a, a), 0)
-
-        imWarped1 = make_gauss(imWarped1)
-
-        # cnt = self.getExternalContour(imWarped1)
-        self.external_contour_approx = cv2.CHAIN_APPROX_TC89_L1
-        # self.external_contour_approx = cv2.CHAIN_APPROX_TC89_KCOS
-        cnt = self.getExternalContour(imWarped1)
-
-        plot = False
-
-        corners_in_warped = sq.findStableLineIntersection(cnt, self.external_contour_approx, plot=plot, half_interval=1)
-        if corners_in_warped is None:
-            return None
-        print(corners_in_warped)
-
-        back = get_it(np.array(corners_in_warped), dst_pts)
-        if back is None:
-            return None
-
-        [right_to_minArea, minArea_to_right, imWarped2] = back
-
-        # print(right_to_minArea.shape, minArea_to_scene.shape)
-        a = right_to_minArea
-        b = minArea_to_scene
-        c = scene_to_minArea
-        d = minArea_to_right
-        x1 = a
-        x2 = b
-        xx = [a,b]
-        # xx = [a,b,c]
-        # xx = [a,b,d] #
-        xx = [b,a,c] #
-        xx = [b,a,d]
-        xx = [a,c,b]
-        xx = [a,c,d]
-        xx = [a,d,b]
-        xx = [a,d,c]
-        xx = [b,a,c] #
-        xx = [b,a,d]
-        xx = [b,c,a]
-        xx = [b,c,d]
-        xx = [d,a,b]
-        xx = [d,a,c]
-        xx = [d,b,a]
-        xx = [d,b,c]
-        xx = [d,c,a]
-        xx = [d,c,b]
-
-        transformation = np.array(np.eye(3,3))
-        for x in xx:
-            transformation = matDot(transformation, np.array(x))
-        # transformation = np.matrix(matDot(np.array(x1),
-        #                                   np.array(x2)))
-
-        transformation = np.matrix(transformation)
-
-        if plot == True:
-            plt.figure(1)
-            sp = 311
-            # imWarpeds = [[imWarped1], [imWarped2]]
-            imWarpeds = [[self.imScene], [imWarped1]]
-            for imWarped in imWarpeds:
-                markuped_image = imWarped[0].copy()
-                drawDots(markuped_image, dst_pts)
-                plt.subplot(sp)
-                sp += 1
-                plt.imshow(markuped_image, cmap='gray')
-
-            contoured_image = imWarped1.copy()
-            drawContour(contoured_image , [cnt])
-            plt.imshow(contoured_image) # , cmap='gray')
-            plt.show()
-
-        corners = []
-        for q in range(4):
-            mat_point = np.transpose(np.matrix([corners_in_warped[q][0], corners_in_warped[q][1], 0]))
-
-            C = np.matrix(np.eye(3,1))
-            np.dot(np.matrix(transformation), mat_point, C)
-            xy = [C[0].tolist()[0], C[1].tolist()[0]]
-
-            corners.append(xy)
-
-        # print(corners)
-        return corners
-
-
-    def findMinAreaRectRecoursive(self, model_tag):
-
-        src_pts = model_tag.ptsDetectArea
-        # list of transformation matrices of individual recoursive rounds
-        to_scene = []
-        to_tag = []
-
-        rounds = 10
-        markuped_images = []
-
-        tim = Timeas()
-        image = self.imScene
-        for q in range(rounds):
-            cnt = self.getExternalContour(image)
-
-            rect = cv2.minAreaRect(cnt)
-            dst_pts = cv2.boxPoints(rect)
-
-            mWarp2scene, _ = cv2.findHomography(src_pts, dst_pts, )
-
-            to_scene.append(mWarp2scene)
-
-            # get inverse transformation matrix
-            try:
-                mWarp2tag = np.linalg.inv(mWarp2scene)
-            except:
-                print("Cannot create inverse matrix. Singular warping matrix. In findMinAreaRectRecoursive, round:", q+1)
-                self.set_error(Error.no_inverse_matrix)
-                return None
-
-            to_tag.append(mWarp2tag)
-
-            imWarped = cv2.warpPerspective(image.copy(), mWarp2tag, model_tag.imTagDetect.shape,
-                                               flags=cv2.INTER_LINEAR )
-
-
-
-            image = imWarped.copy()
-
-            markuped_image = imWarped.copy()
-            drawDots(markuped_image, dst_pts)
-            markuped_images.append([markuped_image])
-
-        tim.print()
-
-        plt.figure(1)
-        rows = round(np.sqrt(rounds))
-        cols = np.ceil(rounds/rows)
-        sp = [rows, cols, 0]
-        for q in range(rounds):
-            sp[2] += 1
-            plt.subplot(*sp)
-            plt.imshow(markuped_images[q][0], cmap='gray')
-
-        plt.show()
-
-        transformation = np.eye(3)
-
-        for q in range(rounds-1, 0, -1):
-            transformation = matDot(transformation , to_tag[q])
-
-        # transformation = to_scene[0]
-
-        # only for drawing
-        # find individual points in original scene
-        corners = []
-        for q in range(4):
-            # vec_point = src_pts[0]
-            # print(vec_point)
-            mat_point = np.transpose(np.matrix([src_pts[q][0], src_pts[q][1], 0]))
-
-            C = np.matrix(np.eye(3,1))
-            #
-            # print(mat_point)
-            # print(transformation)
-            # print(C)
-
-            np.dot(np.matrix(transformation), mat_point, C)
-            xy = [C[0].tolist()[0], C[1].tolist()[0]]
-
-            corners.append(xy)
-
-        # print(corners)
-        return corners
-
-        # # print (dst_pts)
-        # return dst_pts
-
-
     def calculate(self, model_tag):
-
-        # what was the purpose of this
-        # if self.addExternalContour(self.cntExternal) != 0:
-        #     print('added_external contour')
-        #     continue
-        # self.addExternalContour(self.cntExternal)
         self.findWarpMatrix(model_tag)
         # if self.findWarpMatrix(model_tag) == Error.flawless:
             # self.tag_warped = self.drawSceneWarpedToTag(model_tag)

@@ -198,6 +198,8 @@ class Multicopter(GridLayout):
         self.findtag_control = findtag_control
 
         self.step_widgets_control = StepWidgetControl(self.layout_steps)
+
+
 class multicopterApp(App):
     # frame = []
     # running_findtag = False
@@ -296,15 +298,21 @@ class multicopterApp(App):
         seen_tags = self.findtag_control.seen_tags
         im_list = []
 
+        # take from optionbox
+        show_tag_set = [tag_error.flawless, tag_error.no_tag_rotations_found]
+
         if seen_tags is not None:
 
             for tag in seen_tags:
                 # print(tag.error)
                 self.tag_errors_count[tag.error.name] = self.tag_errors_count[tag.error.name] + 1
 
+                # set flag
                 if tag.error == tag_error.flawless:
                     self.set_tags_found(True)
 
+
+                if tag.error in show_tag_set:
                     # print(tag.tag_warped.shape)
                     if tag.imWarped is not None:
                         im_list.append([tag.imWarped.copy()])
@@ -319,7 +327,8 @@ class multicopterApp(App):
         self.set_tag_error_count_text()
         if im_list is not None:
             if len(im_list) > 0:
-                im_list_right = [ im for im in im_list if im is not None]
+
+                # im_list_right = [ im for im in im_list if im is not None]
 
                 imAllTags = fh.joinIm(im_list, 1)
                 # if len(imAllTags.shape) == 2:
