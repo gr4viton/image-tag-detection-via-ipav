@@ -78,10 +78,27 @@ def extractContourArea(im_scene, external_contour):
 
     return scene_with_tag
 
+
+def findTagsInScene(im_scene, model_tag):
+    allowed_size = 800
+    max_size = max(im_scene.shape)
+    if max_size > allowed_size:
+        # find tags in smaller image
+        a = allowed_size/max_size
+        im_scene_smaller = cv2.resize(im_scene,(0,0),fx=a,fy=a)
+        markuped_scene, seen_tags = findTags(im_scene_smaller, model_tag)
+        if seen_tags is None or len(seen_tags) == 0:
+            markuped_scene, seen_tags = findTags(im_scene, model_tag)
+    else:
+        markuped_scene, seen_tags = findTags(im_scene, model_tag)
+
+    return markuped_scene, seen_tags
+
 def findTags(im_scene, model_tag):
 
     # first create copy of scene (not to be contoured)
     scene_markuped = im_scene.copy()
+
 
     # _, contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE )
     _, external_contours, hierarchy = cv2.findContours(im_scene.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_L1)
@@ -95,8 +112,6 @@ def findTags(im_scene, model_tag):
 
         # zero out everything but the tag area
         scene_with_tag = extractContourArea(im_scene, external_contour)
-
-
 
         # initialize observed tag
         observed_tag = fh.C_observedTag(scene_with_tag, external_contour, scene_markuped)
@@ -182,35 +197,12 @@ def threshIT(im, type):
 
     ## OTSU
     elif type == 'otsu' or type == 4:
-        # # find normalized_histogram, and its cumulative distribution function
-        # hist = cv2.calcHist([im], [0], None, [256], [0, 256])
-        # hist_norm = hist.ravel() / hist.max()
-        # Q = hist_norm.cumsum()
-        #
-        # bins = np.arange(256)
-        #
-        # fn_min = np.inf
-        # thresh = -1
-        #
-        # for i in range(1, 256):
-        #     p1, p2 = np.hsplit(hist_norm, [i])  # probabilities
-        #     q1, q2 = Q[i], Q[255] - Q[i]  # cum sum of classes
-        #     b1, b2 = np.hsplit(bins, [i])  # weights
-        #
-        #     # finding means and variances
-        #     m1, m2 = np.sum(p1 * b1) / q1, np.sum(p2 * b2) / q2
-        #     v1, v2 = np.sum(((b1 - m1) ** 2) * p1) / q1, np.sum(((b2 - m2) ** 2) * p2) / q2
-        #
-        #     # calculates the minimization function
-        #     fn = v1 * q1 + v2 * q2
-        #     if fn < fn_min:
-        #         fn_min = fn
-        #         thresh = i
-
-        # find otsu's threshold value with OpenCV function
-        # ret, otsu = cv2.threshold(im, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        ret, otsu = cv2.threshold(im, 0, 255, cv2.THRESH_OTSU)
+        ret, otsu = cv2.threshold(im, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return otsu
+    elif type == 'otsu_inv':
+        ret, otsu = cv2.threshold(im, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        return otsu
+
 
 def add_text(im, text, col = 255, hw = (1, 20)):
     font = cv2.FONT_HERSHEY_COMPLEX_SMALL
@@ -262,10 +254,13 @@ class StepControl():
         self.recreate_buffer(im)
         return self.buffer
 
-    def __init__(self, div, model_tag):
-        self.steps = []
-        self.resolution_multiplier = div
-        self.model_tag = model_tag
+
+    def add_available_step(self, name, function):
+        self.available_steps[name] = Step(name, function)
+
+    def define_available_steps(self):
+
+        self.available_steps = {}
 
         def make_nothing(im):
             return im
@@ -284,8 +279,14 @@ class StepControl():
         def make_gauss(im, a=5):
             return cv2.GaussianBlur(im, (a, a), 0)
 
+        def make_median(im, a=5):
+            return cv2.medianBlur(im, a)
+
         def make_otsu(im):
             return threshIT(im,'otsu').copy()
+
+        def make_otsu_inv(im):
+            return threshIT(im,'otsu_inv').copy()
 
         def make_clear_border(im, width = 5):
             return imclearborder(im, width, self.get_buffer(im))
@@ -314,26 +315,62 @@ class StepControl():
             return im
 
 
-        def make_find_tags(im):
+        self.add_available_step('original', make_nothing)
+        self.add_available_step('gray', make_gray)
+        self.add_available_step('clahed', make_clahe)
+        self.add_available_step('blurred', make_blur)
+        self.add_available_step('gaussed', make_gauss)
 
-            markuped_scene, seen_tags = findTags(im.copy(), self.model_tag)
-            self.seen_tags = seen_tags
-            return markuped_scene
+        self.add_available_step('median', make_median)
 
-        self.steps.append(Step('original', make_nothing))
-        self.steps.append(Step('gray', make_gray))
+        self.add_available_step('resize', make_resize)
+        self.add_available_step('invert', make_invert)
+
+        self.add_available_step('tresholded', make_otsu)
+        self.add_available_step('tresholded inverted', make_otsu_inv)
+        self.add_available_step('border touch cleared', make_clear_border)
+        self.add_available_step('removed frame', make_remove_frame)
+        self.add_available_step('flooded w/white', lambda im: make_flood(im, 255))
+        self.add_available_step('flooded w/black', lambda im: make_flood(im, 0))
+
+        # self.available_steps.append(Step('original', make_nothing))
+        # self.available_steps.append(Step('gray', make_gray))
         # self.steps.append(Step('clahed', make_clahe))
         # self.steps.append(Step('blurred', make_blur))
         # self.steps.append(Step('gaussed', make_gauss))
+        #
+        # self.available_steps.append(Step('resize', make_resize))
+        #
+        # self.available_steps.append(Step('tresholded', make_otsu))
+        # self.available_steps.append(Step('border touch cleared', make_clear_border))
+        # self.available_steps.append(Step('removed frame', make_remove_frame))
+        # self.available_steps.append(Step('flooded w/white', lambda im: make_flood(im, 255)))
+        # self.available_steps.append(Step('flooded w/black', lambda im: make_flood(im, 0)))
 
-        self.steps.append(Step('resize', make_resize))
 
-        self.steps.append(Step('tresholded', make_otsu))
-        self.steps.append(Step('border touch cleared', make_clear_border))
-        self.steps.append(Step('removed frame', make_remove_frame))
-        self.steps.append(Step('flooded w/white', lambda im: make_flood(im, 255)))
-        self.steps.append(Step('flooded w/black', lambda im: make_flood(im, 0)))
-        self.steps.append(Step('findTags', make_find_tags))
+    def select_steps(self, model_tag):
+        self.model_tag = model_tag
+        def make_find_tags(im):
+            markuped_scene, seen_tags = findTagsInScene(im.copy(), self.model_tag)
+            self.seen_tags = seen_tags
+            return markuped_scene
+
+        # add find tag with currentyl selected model_tag
+        findtag_name = 'findTags'
+        self.available_steps.pop(findtag_name, None)
+        self.add_available_step(findtag_name, make_find_tags)
+
+        # create steps list for this model_tag algorithm
+        self.steps = []
+        [self.steps.append(self.available_steps[step_name]) for step_name in self.model_tag.step_names]
+
+
+    def __init__(self, resolution_multiplier, model_tag):
+
+        self.resolution_multiplier = resolution_multiplier
+        self.define_available_steps()
+        self.select_steps(model_tag)
+
 
     def add_operation(self):
         pass

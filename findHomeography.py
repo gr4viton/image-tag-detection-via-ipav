@@ -103,10 +103,9 @@ class C_observedTag:
             # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
             return self.set_error(Error.no_inverse_matrix)
 
-
         self.imWarped = self.drawSceneWarpedToTag(model_tag)
-
         self.addWarpRotation(model_tag)
+        self.imWarped = self.drawSceneWarpedToTag(model_tag)
 
         return self.error
 
@@ -136,9 +135,9 @@ class C_observedTag:
             self.rotation  = []
             for modelCode in model_tag.rotatedModelCodes:
                 if modelCode == squareMeans: # * 1
-                    self.rotation .append(1)
+                    self.rotation.append(1)
                 else:
-                    self.rotation .append(0)
+                    self.rotation.append(0)
 
             # print(self.rotation)
             if sum(self.rotation ) == 0:
@@ -256,66 +255,125 @@ class Timeas:
 class C_tagModel: # tag model
     def __init__(self, strTag):
         # later have function to get this from actual image
+        self.strTag = strTag
 
-        if strTag == '2L':
-            hwWhole = 250
-            bSymbolArea = 60
-            bDetectArea = 40
 
-            self.whole = C_area([hwWhole ]*2, [0]*2)
-            b = bSymbolArea
-            self.symbolArea = C_area([hwWhole - b*2]*2,[b]*2)
-            b = bDetectArea
-            self.detectArea = C_area([hwWhole - b*2]*2,[b]*2)
-
+        def set_tag_type_2():
+            self.hwWhole = 250
+            self.bSymbolArea = 60
+            self.bDetectArea = 40
+            self.numOfSubareas = 2
             self.checkType = 'symbolSquareMeanValue'
-            self.imTag = readIm('full', strTag)
-            self.imTagDetect = readIm('invnoborder', strTag)
-            self.imSymbolArea = self.symbolArea.getRoi(self.imTagDetect)
-            self.imDetectArea = self.detectArea.getRoi(self.imTagDetect)
 
-            self.ptsSymbolArea = getBoxCorners(self.symbolArea.tl[0], self.symbolArea.hw[0] )
-            self.ptsDetectArea = getBoxCorners(self.detectArea.tl[0], self.detectArea.hw[0] )
+            # nefunguje dyž je na èerném pozadí
+            self.step_names = ['original', 'gray', 'resize', 'tresholded inverted',
+                               'border touch cleared', 'removed frame',
+                               'flooded w/black', 'findTags']
 
-            #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            # detection of square subAreas in SymbolArea
-            num = 2
+            # not good
+            self.step_names = ['original', 'gray', 'resize', 'tresholded inverted',
+                               'border touch cleared', 'removed frame', 'median',
+                               'findTags']
 
-            self.symbolSubAreas= self.symbolArea.getSubAreas(num, num)
-            self.rotatedModelCodes = []
-            for rot in range(0,4):
-                imSymbolSubAreas = []
-                for area in self.symbolSubAreas:
-                    imSub = area.getRoi( np.rot90(self.imSymbolArea, rot ) )
-                    imSymbolSubAreas.append(imSub)
+            # sortof ale nechá aj 3L
+            self.step_names = ['original', 'gray', 'resize', 'tresholded',
+                               'border touch cleared', 'removed frame',
+                               'flooded w/white', 'invert',
+                               'findTags']
 
-                modelCode = self.getSquareMeans(imSymbolSubAreas)
-                self.rotatedModelCodes.append(modelCode)
+            self.step_names = ['original', 'gray', 'resize', 'tresholded',
+                               'flooded w/black', 'flooded w/white', 'invert',
+                               'findTags']
 
-            # 90 degree rotation preprocessed matrices
-            [dx, dy] = [-d / 2 for d in self.imTag.shape]
-            self.mTra = np.array([ [1,0,dx], [0,1,dy], [0,0,1] ])
-            self.mTraInv = np.array([ [1,0,-dx], [0,1,-dy], [0,0,1] ])
-
-            self.mRotTra = []
-            self.mInvRotTra = []
-            for angleIdx in range(0,4): # 0, 90, 180, 270 in counterclockwise?
-                angle = np.deg2rad(angleIdx*90)
-
-                cos = np.cos(angle)
-                sin = np.sin(angle)
-                mRot = np.array([ [cos,   sin,   0], [-sin,   cos,    0], [0,     0,      1] ])
-                mRotTra = matDot(self.mTraInv , matDot(mRot, self.mTra) )
-                try:
-                    mInvRotTra = np.linalg.inv( mRotTra )
-                except:
-                    raise Exception('Cannot calculate inverse matrix.')
-                    # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
-                    return 1
-                self.mRotTra.append(mRotTra)
-                self.mInvRotTra.append( mInvRotTra )
+            # devel
+            self.step_names = ['original', 'gray', 'resize', 'gaussed', 'tresholded',
+                               'flooded w/white','flooded w/black', 'flooded w/white', 'invert',
+                               'findTags']
 
 
+        def set_tag_type_3():
+            self.hwWhole = 250
+            self.bSymbolArea = 60
+            self.bDetectArea = 40
+            self.numOfSubareas = 2
+            self.checkType = 'symbolSquareMeanValue'
+
+            self.step_names = ['original', 'gray', 'resize', 'tresholded',
+                               'border touch cleared', 'removed frame',
+                               'flooded w/black', 'findTags']
+
+            # type3 - asi taky functional = bez border clear
+            self.step_names = ['original', 'gray', 'resize', 'tresholded inverted',
+                               'removed frame',
+                               'flooded w/black', 'flooded w/white', 'invert',
+                               'findTags']
+
+            # type2 - functional the right one
+            # self.step_names = ['original', 'gray', 'resize', 'tresholded',
+            #                    'border touch cleared', 'removed frame',
+            #                    'flooded w/white', 'flooded w/black', 'findTags']
+
+        if self.strTag in ['2L','2d']:
+            set_tag_type_2()
+        if self.strTag in ['3L','3d']:
+            set_tag_type_3()
+
+        self.setAreasVariables()
+        if self.checkType == 'symbolSquareMeanValue':
+            self.setSquareDetectionVariables()
+
+
+    def setAreasVariables(self):
+        self.whole = C_area([self.hwWhole ]*2, [0]*2)
+        b = self.bSymbolArea
+        self.symbolArea = C_area([self.hwWhole - b*2]*2,[b]*2)
+        b = self.bDetectArea
+        self.detectArea = C_area([self.hwWhole - b*2]*2,[b]*2)
+
+        self.imTag = readIm('full', self.strTag)
+        self.imTagDetect = readIm('invnoborder', self.strTag)
+
+        self.imSymbolArea = self.symbolArea.getRoi(self.imTagDetect)
+        self.imDetectArea = self.detectArea.getRoi(self.imTagDetect)
+
+        self.ptsSymbolArea = getBoxCorners(self.symbolArea.tl[0], self.symbolArea.hw[0] )
+        self.ptsDetectArea = getBoxCorners(self.detectArea.tl[0], self.detectArea.hw[0] )
+
+    def setSquareDetectionVariables(self):
+        num = self.numOfSubareas
+        self.symbolSubAreas= self.symbolArea.getSubAreas(num, num)
+        self.rotatedModelCodes = []
+        for rot in range(0,4):
+            imSymbolSubAreas = []
+            for area in self.symbolSubAreas:
+                imSub = area.getRoi( np.rot90(self.imSymbolArea, rot ) )
+                imSymbolSubAreas.append(imSub)
+
+            modelCode = self.getSquareMeans(imSymbolSubAreas)
+            self.rotatedModelCodes.append(modelCode)
+
+        # 90 degree rotation preprocessed matrices
+        [dx, dy] = [-d / 2 for d in self.imTag.shape]
+        self.mTra = np.array([ [1,0,dx], [0,1,dy], [0,0,1] ])
+        self.mTraInv = np.array([ [1,0,-dx], [0,1,-dy], [0,0,1] ])
+
+        self.mRotTra = []
+        self.mInvRotTra = []
+        for angleIdx in range(0,4): # 0, 90, 180, 270 in counterclockwise?
+            angle = np.deg2rad(angleIdx*90)
+
+            cos = np.cos(angle)
+            sin = np.sin(angle)
+            mRot = np.array([ [cos,   sin,   0], [-sin,   cos,    0], [0,     0,      1] ])
+            mRotTra = matDot(self.mTraInv , matDot(mRot, self.mTra) )
+            try:
+                mInvRotTra = np.linalg.inv( mRotTra )
+            except:
+                raise Exception('Cannot calculate inverse matrix.')
+                # print("Cannot create inverse matrix. Singular warping matrix. Probably bad tag detected!")
+                return 1
+            self.mRotTra.append(mRotTra)
+            self.mInvRotTra.append( mInvRotTra )
 
 
     def getSquareMeans(self, imSymbolSubAreas):

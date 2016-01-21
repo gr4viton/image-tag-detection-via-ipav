@@ -233,7 +233,10 @@ class multicopterApp(App):
               '. Continuing with program execution.')
         # time.sleep(0.5)
 
-        self.findtag_control = FindtagControl(self.capture_control)
+
+        selected_tag_name = '2L'
+
+        self.findtag_control = FindtagControl(self.capture_control, selected_tag_name)
         self.findtag_control.start_findtagging()
 
 
