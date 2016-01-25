@@ -240,6 +240,7 @@ class Step():
 class StepControl():
 
     buffer = None
+    seen_tags = None
 
     def recreate_buffer(self, im):
         if self.buffer is None:
@@ -315,6 +316,27 @@ class StepControl():
             return im
 
 
+        # Initiate STAR detector
+        # orb = cv2.ORB()
+        orb = cv2.ORB_create()
+        def make_orb(im):
+            # find the keypoints with ORB
+            kp = orb.detect(im, None)
+
+            # compute the descriptors with ORB
+            kp, des = orb.compute(im, kp)
+
+            # draw only keypoints location,not size and orientation
+            # col = (0,255,0)
+            col = 142
+            im_out = np.zeros(im.shape)
+            flags = cv2.DRAW_MATCHES_FLAGS_DRAW_OVER_OUTIMG + (
+                    cv2.DRAW_MATCHES_FLAGS_DEFAULT)
+
+            cv2.drawKeypoints(im, kp, im_out, color=col, flags=flags)
+            print(len(kp))
+            return im_out
+
         self.add_available_step('original', make_nothing)
         self.add_available_step('gray', make_gray)
         self.add_available_step('clahed', make_clahe)
@@ -333,6 +355,7 @@ class StepControl():
         self.add_available_step('flooded w/white', lambda im: make_flood(im, 255))
         self.add_available_step('flooded w/black', lambda im: make_flood(im, 0))
 
+        self.add_available_step('orb', make_orb)
 
         # self.available_steps.append(Step('original', make_nothing))
         # self.available_steps.append(Step('gray', make_gray))

@@ -257,6 +257,17 @@ class C_tagModel: # tag model
         # later have function to get this from actual image
         self.strTag = strTag
 
+        def set_tag_type_circ():
+            self.hwWhole = 250
+            self.bSymbolArea = 60
+            self.bDetectArea = 40
+            self.numOfSubareas = 2
+            self.checkType = 'symbolSquareMeanValue'
+
+            # devel
+            self.step_names = ['original', 'gray', 'resize', 'gaussed', 'tresholded',
+                               'orb']
+            self.step_names = ['original', 'gray', 'resize', 'orb']
 
         def set_tag_type_2():
             self.hwWhole = 250
@@ -298,6 +309,7 @@ class C_tagModel: # tag model
             self.numOfSubareas = 2
             self.checkType = 'symbolSquareMeanValue'
 
+
             self.step_names = ['original', 'gray', 'resize', 'tresholded',
                                'border touch cleared', 'removed frame',
                                'flooded w/black', 'findTags']
@@ -313,6 +325,8 @@ class C_tagModel: # tag model
             #                    'border touch cleared', 'removed frame',
             #                    'flooded w/white', 'flooded w/black', 'findTags']
 
+        if self.strTag in ['c2']:
+            set_tag_type_circ()
         if self.strTag in ['2L','2d']:
             set_tag_type_2()
         if self.strTag in ['3L','3d']:
@@ -496,6 +510,7 @@ def getBoxCorners(boxOffset, boxSide):
     return np.float32(pts)
 
 def read_model_tag(strTag):
+    print(strTag)
     cTag = C_tagModel(strTag)
     return cTag
 

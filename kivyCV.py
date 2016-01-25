@@ -234,9 +234,11 @@ class multicopterApp(App):
         # time.sleep(0.5)
 
 
-        selected_tag_name = '2L'
+        selected_tag_name = 'c2'
 
-        self.findtag_control = FindtagControl(self.capture_control, selected_tag_name)
+        tag_names = ['2L', '3L', 'c2']
+
+        self.findtag_control = FindtagControl(self.capture_control, tag_names, selected_tag_name)
         self.findtag_control.start_findtagging()
 
 

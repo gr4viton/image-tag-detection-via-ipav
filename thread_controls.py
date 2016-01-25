@@ -74,23 +74,31 @@ class FindtagControl():
     # execution_time = LockedValue([])
     mean_execution_time = LockedValue(0)
 
-    def __init__(self, capture_control, selected_tag_name):
+    def __init__(self, capture_control, tag_names, selected_tag_name):
+        self.tag_names = tag_names
+        self.init_tag_names()
+        self.select_tag_name(selected_tag_name)
+
         self.capture_control = capture_control
-        self.init_findtag(selected_tag_name)
         self.execution_time_len = 50
         self.execution_time = []
         self.resolution_multiplier = 0.5
         self._step_control = StepControl(self.resolution_multiplier, self.model_tag)
 
-    def init_findtag(self, selected_tag_name):
-        # tag_names = ['2L','2d']
-        tag_names = ['2L', '3L']
-        self.model_tags = [fh.read_model_tag(tag_name) for tag_name in tag_names]
 
-        if selected_tag_name in tag_names:
-            self.model_tag = self.model_tags[tag_names.index(selected_tag_name)]
+    def init_tag_names(self):
+        self.model_tags = [fh.read_model_tag(tag_name) for tag_name in self.tag_names]
+
+    def select_tag_name(self, selected_tag_name):
+        if selected_tag_name in self.tag_names:
+            self.model_tag = self.model_tags[ self.tag_names.index(selected_tag_name)]
+            self.selected_tag_name = selected_tag_name
         else:
             self.model_tag = self.model_tags[0]
+            self.selected_tag_name = self.model_tags[0].strTag()
+
+
+
 
     def start_findtagging(self):
         self.findtagging = True
