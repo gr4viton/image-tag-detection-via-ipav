@@ -333,6 +333,7 @@ class StepControl():
         self.add_available_step('flooded w/white', lambda im: make_flood(im, 255))
         self.add_available_step('flooded w/black', lambda im: make_flood(im, 0))
 
+
         # self.available_steps.append(Step('original', make_nothing))
         # self.available_steps.append(Step('gray', make_gray))
         # self.steps.append(Step('clahed', make_clahe))
