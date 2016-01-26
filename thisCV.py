@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+
 import findHomeography as fh
 # from cv2 import xfeatures2d
 # import common
@@ -278,7 +279,7 @@ class StepControl():
             return cv2.bilateralFilter(im, 9, a, a)
 
         def make_gauss(im, a=5):
-            return cv2.GaussianBlur(im, (a, a), 0)
+            return cv2.GaussianBlur(im.copy(), (a, a), 0)
 
         def make_median(im, a=5):
             return cv2.medianBlur(im, a)
@@ -291,7 +292,6 @@ class StepControl():
 
         def make_clear_border(im, width = 5):
             return imclearborder(im, width, self.get_buffer(im))
-
 
         def make_remove_frame(im, width = 5, color = 0):
             a = width
@@ -316,9 +316,11 @@ class StepControl():
             return im
 
 
-        # Initiate STAR detector
-        # orb = cv2.ORB()
-        orb = cv2.ORB_create()
+        # Initiate ORB detector
+        scoreType = cv2.ORB_FAST_SCORE
+        # scoreType = cv2.ORB_HARRIS_SCORE
+        orb = cv2.ORB_create(scoreType=scoreType)
+
         def make_orb(im):
             # find the keypoints with ORB
             kp = orb.detect(im, None)
@@ -336,6 +338,23 @@ class StepControl():
             cv2.drawKeypoints(im, kp, im_out, color=col, flags=flags)
             print(len(kp))
             return im_out
+
+
+        # def make_dif_laplace(im):
+
+
+        # Init SIFT detector
+        sift = cv2.features2d.SIFT_create()
+        cv2.
+        def make_sift(im):
+            kp = sift.detect(im, None)
+
+            col = 142
+            im_out = np.zeros(im.shape)
+            cv2.drawKeypoints(im, kp, im_out, color=col)
+
+            return im_out
+
 
         self.add_available_step('original', make_nothing)
         self.add_available_step('gray', make_gray)
@@ -356,6 +375,7 @@ class StepControl():
         self.add_available_step('flooded w/black', lambda im: make_flood(im, 0))
 
         self.add_available_step('orb', make_orb)
+        self.add_available_step('sift', make_sift)
 
         # self.available_steps.append(Step('original', make_nothing))
         # self.available_steps.append(Step('gray', make_gray))

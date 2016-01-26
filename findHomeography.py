@@ -267,7 +267,9 @@ class C_tagModel: # tag model
             # devel
             self.step_names = ['original', 'gray', 'resize', 'gaussed', 'tresholded',
                                'orb']
-            self.step_names = ['original', 'gray', 'resize', 'orb']
+            self.step_names = ['original', 'gray', 'resize',
+                               'gaussed', 'tresholded' , 'border touch cleared', 'removed frame',
+                               'orb']
 
         def set_tag_type_2():
             self.hwWhole = 250
