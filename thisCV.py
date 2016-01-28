@@ -8,18 +8,18 @@ import time
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # global variables
 
-
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # function definitions
 
-def imclearborder(im, radius, buffer):
+
+def imclearborder(im, radius, buffer, mask):
     # Given a black and white image, first find all of its contours
 
     #todo make faster copping as buffer is always the same size!
     buffer = im.copy()
     # _, contours, hierarchy = cv2.findContours(buffer, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # _, contours, hierarchy = cv2.findContours(buffer.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)
-    _, contours, hierarchy = cv2.findContours(buffer.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_L1)
+    _, contours, hierarchy = cv2.findContours(buffer, cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)
+    # _, contours, hierarchy = cv2.findContours(buffer, cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_L1)
 
     # hierarchy = Next, Previous, First_Child, Parent
     # Get dimensions of image
@@ -28,10 +28,17 @@ def imclearborder(im, radius, buffer):
 
     cTouching = []  # indexes of contours that touch the border
     cInsideTouching = [] # indexes that are inside of contours that touch the border
+
+    # print('len contour',len(contours))
     # For each contour...
     for idx in np.arange(len(contours)):
+        # if contour is not external continue (otherwise it cannot touoch border
+        if hierarchy[0][idx][3] != -1:
+            continue
+
         # Get the i'th contour
         cnt = contours[idx]
+
         # Look at each point in the contour
         for pt in cnt:
             rowCnt = pt[0][1]
@@ -42,40 +49,45 @@ def imclearborder(im, radius, buffer):
             check2 = (colCnt >= 0 and colCnt < radius) or (colCnt >= n_cols - 1 - radius and colCnt < n_cols)
 
             if check1 or check2:
+
                 cTouching.append(idx)
-                # add children inside cInsideTouching
+
+                # add first children inside cInsideTouching
+                # = first children is the other edge of external touching contour
                 q = hierarchy[0][idx][2] # first child index
-                while q != -1:
+                if q != -1:
                     cInsideTouching.append(q)
-                    q = hierarchy[0, q, 0] # next
-                break
 
                 # as this contour is already added
-                cnt = None
+                break
 
+
+    # as the contours are CHAIN_APPROX for speed, this makes also the "noise" dissapear
+    approx_correction_thickness = 3
 
     # create mask to delete (not touching the child contours insides)
-    mask = np.uint8( np.ones(im.shape) + 254)
 
     # make the most external contour black
     for idx in cTouching:
         col = 0
         cv2.drawContours(mask, contours, idx, col, thickness=-1)
-        # as the contours are CHAIN_APPROX for speed, make also the dots disappear
-        cv2.drawContours(mask, contours, idx, col, thickness=3)
+        cv2.drawContours(mask, contours, idx, col, thickness=approx_correction_thickness )
 
     # make the inner contours visible
     for idx in cInsideTouching:
         col = 255
         cv2.drawContours(mask, contours, idx, color=col, thickness=-1)
+        col = 0
+        cv2.drawContours(mask, contours, idx, color=col, thickness=approx_correction_thickness )
 
     # mask2 = mask.copy()
     # cv2.dilate(mask,mask2)
-
     cv2.bitwise_and(mask, im, buffer)
     # imgBWcopy = imgBWcopy * 255
     # imgBWcopy = imgBWcopy
     return buffer
+
+
 
 def extractContourArea(im_scene, external_contour):
     mask = np.uint8( np.zeros(im_scene.shape) )
@@ -251,6 +263,17 @@ class StepControl():
 
     buffer = None
     seen_tags = None
+    mask_ones = None
+
+    def recreate_mask(self,im ):
+        if self.mask_ones is None or im.shape != self.mask_ones.shape:
+            self.mask_ones = np.uint8( np.ones(im.shape) + 254)
+            # print('recreated mask')
+
+    def get_mask(self, im):
+        self.recreate_mask(im)
+        return self.mask_ones.copy()
+
 
     def recreate_buffer(self, im):
         if self.buffer is None:
@@ -261,8 +284,10 @@ class StepControl():
             # else:
             #     return self.buffer
 
+
     def get_buffer(self, im):
-        self.recreate_buffer(im)
+        if self.buffer is None:
+            self.recreate_buffer(im)
         return self.buffer
 
 
@@ -275,8 +300,10 @@ class StepControl():
 
         def make_nothing(im):
             return im
+
         def make_resize(im):
-            return cv2.resize(im, (0, 0), fx=self.resolution_multiplier, fy=self.resolution_multiplier)
+            return cv2.resize(im.copy(), (0, 0), fx=self.resolution_multiplier, fy=self.resolution_multiplier)
+
         def make_gray(im):
             return cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
 
@@ -299,8 +326,9 @@ class StepControl():
         def make_otsu_inv(im):
             return threshIT(im,'otsu_inv').copy()
 
+
         def make_clear_border(im, width = 5):
-            return imclearborder(im, width, self.get_buffer(im))
+            return imclearborder(im, width, self.get_buffer(im), self.get_mask(im))
 
         def make_remove_frame(im, width = 5, color = 0):
             a = width
@@ -328,7 +356,8 @@ class StepControl():
         # Initiate ORB detector
         scoreType = cv2.ORB_FAST_SCORE
         # scoreType = cv2.ORB_HARRIS_SCORE
-        orb = cv2.ORB_create(scoreType=scoreType)
+        # orb = cv2.ORB_create(scoreType=scoreType)
+        orb = cv2.ORB_create()
 
         def make_orb(im):
             # find the keypoints with ORB
@@ -361,11 +390,35 @@ class StepControl():
             col = 142
             im_out = np.zeros(im.shape)
             flags = cv2.DRAW_MATCHES_FLAGS_DRAW_OVER_OUTIMG + (
-                    cv2.DRAW_MATCHES_FLAGS_DEFAULT)
+                    cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
             cv2.drawKeypoints(im, kp, im_out, color=col, flags=flags)
 
             return im_out
 
+        def make_freak(im):
+            freakExtractor = cv2.xfeatures2d.FREAK_create()
+            keypoints, descriptors = freakExtractor.compute(im, keypoints)
+
+        # Initiate FAST object with default values
+        fast = cv2.FastFeatureDetector_create(nonmaxSuppression=0) # 8ms
+        fast = cv2.FastFeatureDetector_create(nonmaxSuppression=1) # 3ms
+        # fast.setBool('nonmaxSuppression',1)
+
+
+        def make_fast(im):
+
+            # find and draw the keypoints
+            kp = fast.detect(im, None)
+
+            col = 255
+            im_out = np.zeros(im.shape)
+            flags = cv2.DRAW_MATCHES_FLAGS_DRAW_OVER_OUTIMG + (
+                    cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+
+
+
+            cv2.drawKeypoints(im, kp, im_out, color=col, flags=flags)
+            return im_out
 
         self.add_available_step('original', make_nothing)
         self.add_available_step('gray', make_gray)
@@ -387,6 +440,9 @@ class StepControl():
 
         self.add_available_step('orb', make_orb)
         self.add_available_step('sift', make_sift)
+
+        self.add_available_step('freak', make_freak)
+        self.add_available_step('fast', make_fast)
 
         # self.available_steps.append(Step('original', make_nothing))
         # self.available_steps.append(Step('gray', make_gray))

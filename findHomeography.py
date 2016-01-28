@@ -265,18 +265,42 @@ class C_tagModel: # tag model
             self.checkType = 'symbolSquareMeanValue'
 
             # devel
-            self.step_names = ['original', 'gray', 'resize', 'gaussed', 'tresholded',
+            self.step_names = ['original',  'resize', 'gray','gaussed', 'tresholded',
                                'orb']
-            self.step_names = ['original', 'gray', 'resize',
+            self.step_names = ['original', 'resize', 'gray',
                                'gaussed', 'tresholded' , 'border touch cleared', 'removed frame',
                                'orb']
 
-            self.step_names = ['original', 'gray', 'resize',
-                               'gaussed', 'tresholded' , 'border touch cleared', 'removed frame'
+            self.step_names = ['original', 'resize', 'gray',
+                               'gaussed',
+                               'tresholded',
+                               # 'tresholded inverted',
+                               'border touch cleared', 'removed frame',
+                               # 'flooded w/black',
+                               # 'flooded w/white'
+                               #  'remove small'
+                               # 'resize',
+                               'sift'
                                ]
-            # self.step_names = ['original', 'gray', 'resize',
+
+            self.step_names = ['original', 'resize', 'gray',
+                               'gaussed',
+                               'tresholded',
+                               # 'tresholded inverted',
+                               'border touch cleared', 'removed frame',
+                               # 'flooded w/black',
+                               # 'flooded w/white'
+                               #  'remove small'
+                               # 'resize',
+                               'fast'
+                               # 'orb'
+                               ]
+
+
+            # self.step_names = ['original', 'resize', 'gray',
             #                    'gaussed', 'tresholded' , 'border touch cleared', 'removed frame',
             #                    'sift']
+
 
         def set_tag_type_2():
             self.hwWhole = 250
@@ -286,27 +310,27 @@ class C_tagModel: # tag model
             self.checkType = 'symbolSquareMeanValue'
 
             # nefunguje dyž je na èerném pozadí
-            self.step_names = ['original', 'gray', 'resize', 'tresholded inverted',
+            self.step_names = ['original', 'resize', 'gray',  'tresholded inverted',
                                'border touch cleared', 'removed frame',
                                'flooded w/black', 'findTags']
 
             # not good
-            self.step_names = ['original', 'gray', 'resize', 'tresholded inverted',
+            self.step_names = ['original', 'resize', 'gray',  'tresholded inverted',
                                'border touch cleared', 'removed frame', 'median',
                                'findTags']
 
             # sortof ale nechá aj 3L
-            self.step_names = ['original', 'gray', 'resize', 'tresholded',
+            self.step_names = ['original', 'resize', 'gray',  'tresholded',
                                'border touch cleared', 'removed frame',
                                'flooded w/white', 'invert',
                                'findTags']
 
-            self.step_names = ['original', 'gray', 'resize', 'tresholded',
+            self.step_names = ['original', 'resize', 'gray',  'tresholded',
                                'flooded w/black', 'flooded w/white', 'invert',
                                'findTags']
 
             # devel
-            self.step_names = ['original', 'gray', 'resize', 'gaussed', 'tresholded',
+            self.step_names = ['original', 'resize', 'gray',  'gaussed', 'tresholded',
                                'flooded w/white','flooded w/black', 'flooded w/white', 'invert',
                                'findTags']
 
@@ -319,18 +343,18 @@ class C_tagModel: # tag model
             self.checkType = 'symbolSquareMeanValue'
 
 
-            self.step_names = ['original', 'gray', 'resize', 'tresholded',
+            self.step_names = ['original', 'resize', 'gray',  'tresholded',
                                'border touch cleared', 'removed frame',
                                'flooded w/black', 'findTags']
 
             # type3 - asi taky functional = bez border clear
-            self.step_names = ['original', 'gray', 'resize', 'tresholded inverted',
+            self.step_names = ['original', 'resize', 'gray',  'tresholded inverted',
                                'removed frame',
                                'flooded w/black', 'flooded w/white', 'invert',
                                'findTags']
 
             # type2 - functional the right one
-            # self.step_names = ['original', 'gray', 'resize', 'tresholded',
+            # self.step_names = ['original', 'resize', 'gray',  'tresholded',
             #                    'border touch cleared', 'removed frame',
             #                    'flooded w/white', 'flooded w/black', 'findTags']
 
