@@ -18,8 +18,8 @@ def imclearborder(im, radius, buffer):
     #todo make faster copping as buffer is always the same size!
     buffer = im.copy()
     # _, contours, hierarchy = cv2.findContours(buffer, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    _, contours, hierarchy = cv2.findContours(buffer.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)
-    # _, contours, hierarchy = cv2.findContours(buffer.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_L1)
+    # _, contours, hierarchy = cv2.findContours(buffer.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_KCOS)
+    _, contours, hierarchy = cv2.findContours(buffer.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_TC89_L1)
 
     # hierarchy = Next, Previous, First_Child, Parent
     # Get dimensions of image
@@ -50,15 +50,24 @@ def imclearborder(im, radius, buffer):
                     q = hierarchy[0, q, 0] # next
                 break
 
+                # as this contour is already added
+                cnt = None
+
+
     # create mask to delete (not touching the child contours insides)
     mask = np.uint8( np.ones(im.shape) + 254)
 
+    # make the most external contour black
     for idx in cTouching:
         col = 0
-        cv2.drawContours(mask, contours, idx, col, -1)
+        cv2.drawContours(mask, contours, idx, col, thickness=-1)
+        # as the contours are CHAIN_APPROX for speed, make also the dots disappear
+        cv2.drawContours(mask, contours, idx, col, thickness=3)
+
+    # make the inner contours visible
     for idx in cInsideTouching:
         col = 255
-        cv2.drawContours(mask, contours, idx, col, -1)
+        cv2.drawContours(mask, contours, idx, color=col, thickness=-1)
 
     # mask2 = mask.copy()
     # cv2.dilate(mask,mask2)
@@ -344,14 +353,16 @@ class StepControl():
 
 
         # Init SIFT detector
-        sift = cv2.features2d.SIFT_create()
-        cv2.
+        sift = cv2.xfeatures2d.SIFT_create()
+
         def make_sift(im):
             kp = sift.detect(im, None)
 
             col = 142
             im_out = np.zeros(im.shape)
-            cv2.drawKeypoints(im, kp, im_out, color=col)
+            flags = cv2.DRAW_MATCHES_FLAGS_DRAW_OVER_OUTIMG + (
+                    cv2.DRAW_MATCHES_FLAGS_DEFAULT)
+            cv2.drawKeypoints(im, kp, im_out, color=col, flags=flags)
 
             return im_out
 

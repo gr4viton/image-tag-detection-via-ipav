@@ -271,6 +271,13 @@ class C_tagModel: # tag model
                                'gaussed', 'tresholded' , 'border touch cleared', 'removed frame',
                                'orb']
 
+            self.step_names = ['original', 'gray', 'resize',
+                               'gaussed', 'tresholded' , 'border touch cleared', 'removed frame'
+                               ]
+            # self.step_names = ['original', 'gray', 'resize',
+            #                    'gaussed', 'tresholded' , 'border touch cleared', 'removed frame',
+            #                    'sift']
+
         def set_tag_type_2():
             self.hwWhole = 250
             self.bSymbolArea = 60
