@@ -395,8 +395,8 @@ class StepControl():
 
             return im_out
 
+        freakExtractor = cv2.xfeatures2d.FREAK_create()
         def make_freak(im):
-            freakExtractor = cv2.xfeatures2d.FREAK_create()
             keypoints, descriptors = freakExtractor.compute(im, keypoints)
 
         # Initiate FAST object with default values
@@ -416,8 +416,11 @@ class StepControl():
                     cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
 
+            keypoints, descriptors = freakExtractor.compute(im, kp)
 
             cv2.drawKeypoints(im, kp, im_out, color=col, flags=flags)
+
+
             return im_out
 
         self.add_available_step('original', make_nothing)
