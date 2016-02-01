@@ -356,8 +356,15 @@ class StepControl():
         # Initiate ORB detector
         scoreType = cv2.ORB_FAST_SCORE
         # scoreType = cv2.ORB_HARRIS_SCORE
-        # orb = cv2.ORB_create(scoreType=scoreType)
-        orb = cv2.ORB_create()
+        orb = cv2.ORB_create(scoreType=scoreType)
+        orb.setMaxFeatures(300)
+# 'setEdgeThreshold','setFastThreshold', \
+# 'setFirstLevel', 'setMaxFeatures', \
+# 'setNLevels', 'setPatchSize', \
+# 'setScaleFactor', 'setScoreType',
+#         setWTA_K
+
+        # orb = cv2.ORB_create()
 
         def make_orb(im):
             # find the keypoints with ORB
@@ -380,6 +387,21 @@ class StepControl():
 
         # def make_dif_laplace(im):
 
+
+
+        # Init SURF detector
+        surf = cv2.xfeatures2d.SURF_create()
+
+        def make_surf(im):
+            kp = surf.detect(im, None)
+
+            col = 142
+            im_out = np.zeros(im.shape)
+            flags = cv2.DRAW_MATCHES_FLAGS_DRAW_OVER_OUTIMG + (
+                    cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+            cv2.drawKeypoints(im, kp, im_out, color=col, flags=flags)
+
+            return im_out
 
         # Init SIFT detector
         sift = cv2.xfeatures2d.SIFT_create()
@@ -423,6 +445,42 @@ class StepControl():
 
             return im_out
 
+
+        def make_hls_stack(im):
+            im_gray = make_gray(im)
+            im_hls = cv2.cvtColor(im, cv2.COLOR_RGB2HLS_FULL)
+            h,l,s = cv2.split(im_hls)
+            im1 = fh.joinIm([[h],[l]])
+
+
+            im2 = fh.joinIm([[s], [im_gray]])
+            # print(im1.shape,'ass',im2.shape)
+            im_out = fh.joinIm([[im1], [im2]], vertically=1)
+            # print(im_out.shape)
+            return im_out
+
+        def make_hls_saturation(im):
+            im_hls = cv2.cvtColor(im, cv2.COLOR_RGB2HLS_FULL)
+            return np.uint8( im_hls[:, :, 2] )
+
+        def make_erase_color(im):
+            im_gray = make_gray(im)
+            gray_field = np.uint8( np.ones(im_gray.shape) + 0)
+            # np.uint8( np.ones(im.shape) + 254)
+
+            im_out = im_gray.copy()
+
+            mask =  make_gauss(make_hls_saturation(im))
+            # _, th1 = cv2.threshold(mask, 100, 255, cv2.THRESH_BINARY)
+            # mask = th1
+
+            # mask = np.round(mask)
+            cv2.bitwise_and(mask=mask, src1=im_gray, src2=gray_field, dst=im_out)
+            return mask
+            # return gray_field
+            # return im_gray
+            return im_out
+
         self.add_available_step('original', make_nothing)
         self.add_available_step('gray', make_gray)
         self.add_available_step('clahed', make_clahe)
@@ -441,8 +499,14 @@ class StepControl():
         self.add_available_step('flooded w/white', lambda im: make_flood(im, 255))
         self.add_available_step('flooded w/black', lambda im: make_flood(im, 0))
 
+        self.add_available_step('hls stack', make_hls_stack)
+        self.add_available_step('hls saturation', make_hls_saturation)
+        self.add_available_step('erase color', make_erase_color)
+
+
         self.add_available_step('orb', make_orb)
         self.add_available_step('sift', make_sift)
+        self.add_available_step('surf', make_surf)
 
         self.add_available_step('freak', make_freak)
         self.add_available_step('fast', make_fast)

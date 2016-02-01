@@ -283,17 +283,23 @@ class C_tagModel: # tag model
                                'sift'
                                ]
 
-            self.step_names = ['original', 'resize', 'gray',
+            self.step_names = ['original', 'resize',
+                               # 'gray',
+                               # 'hls stack',
+                               # 'hls saturation',
+                               'erase color',
                                'gaussed',
-                               'tresholded',
+                               # 'tresholded',
                                # 'tresholded inverted',
-                               'border touch cleared', 'removed frame',
+                               # 'border touch cleared', 'removed frame',
                                # 'flooded w/black',
                                # 'flooded w/white'
                                #  'remove small'
                                # 'resize',
-                               'fast'
+                               # 'fast'
                                # 'orb'
+                               # 'sift'
+                               # 'surf'
                                ]
 
 
