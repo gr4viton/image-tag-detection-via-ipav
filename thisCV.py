@@ -314,8 +314,8 @@ class StepControl():
         def make_blur(im, a=75):
             return cv2.bilateralFilter(im, 9, a, a)
 
-        def make_gauss(im, a=5):
-            return cv2.GaussianBlur(im.copy(), (a, a), 0)
+        def make_gauss(im, a=5, sigma=1):
+            return cv2.GaussianBlur(im.copy(), (a, a), sigmaX=sigma)
 
         def make_median(im, a=5):
             return cv2.medianBlur(im, a)
@@ -460,8 +460,10 @@ class StepControl():
             return im_out
 
         def make_hls_saturation(im):
-            im_hls = cv2.cvtColor(im, cv2.COLOR_RGB2HLS_FULL)
-            return np.uint8( im_hls[:, :, 2] )
+            # im_hls = cv2.cvtColor(im, cv2.COLOR_RGB2HLS)
+            im_hls = cv2.cvtColor(im, cv2.COLOR_RGB2HSV)
+            # return np.uint8( im_hls[:, :, 2] )
+            return np.uint8( im_hls[:, :, 1] )
 
         def make_erase_color(im):
             im_gray = make_gray(im)
@@ -470,8 +472,9 @@ class StepControl():
 
             im_out = im_gray.copy()
 
-            mask =  make_gauss(make_hls_saturation(im))
-            # _, th1 = cv2.threshold(mask, 100, 255, cv2.THRESH_BINARY)
+            mask =  make_gauss(make_hls_saturation(im), a =9, sigma=13)
+
+            # _, th1 = cv2.threshold(mask, 127, 255, cv2.THRESH_TOZERO)
             # mask = th1
 
             # mask = np.round(mask)
