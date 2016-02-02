@@ -473,13 +473,21 @@ class StepControl():
             im_out = im_gray.copy()
 
             mask =  make_gauss(make_hls_saturation(im), a =9, sigma=13)
+            mask = make_invert(mask)
+
 
             # _, th1 = cv2.threshold(mask, 127, 255, cv2.THRESH_TOZERO)
             # mask = th1
 
             # mask = np.round(mask)
-            cv2.bitwise_and(mask=mask, src1=im_gray, src2=gray_field, dst=im_out)
-            return mask
+            # cv2.bitwise_and(mask=mask, src1=im_gray, src2=gray_field, dst=im_out)
+
+            alpha = 0.3
+            beta = 0.7
+            gamma = 0.0
+            cv2.addWeighted(im_gray, alpha, mask, beta, gamma, im_out)
+
+            # return mask
             # return gray_field
             # return im_gray
             return im_out

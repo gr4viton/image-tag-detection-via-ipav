@@ -289,7 +289,7 @@ class C_tagModel: # tag model
                                # 'hls saturation',
                                'erase color',
                                'gaussed',
-                               # 'tresholded',
+                               'tresholded',
                                # 'tresholded inverted',
                                # 'border touch cleared', 'removed frame',
                                # 'flooded w/black',
