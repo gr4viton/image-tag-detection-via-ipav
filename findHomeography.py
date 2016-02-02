@@ -286,10 +286,10 @@ class C_tagModel: # tag model
             self.step_names = ['original', 'resize',
                                # 'gray',
                                # 'hls stack',
-                               # 'hls saturation',
-                               'erase color',
+                               'hls saturation',
+                               # 'erase color',
                                'gaussed',
-                               'tresholded',
+                               # 'tresholded',
                                # 'tresholded inverted',
                                # 'border touch cleared', 'removed frame',
                                # 'flooded w/black',
@@ -297,7 +297,7 @@ class C_tagModel: # tag model
                                #  'remove small'
                                # 'resize',
                                # 'fast'
-                               # 'orb'
+                               'orb'
                                # 'sift'
                                # 'surf'
                                ]

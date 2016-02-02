@@ -482,8 +482,8 @@ class StepControl():
             # mask = np.round(mask)
             # cv2.bitwise_and(mask=mask, src1=im_gray, src2=gray_field, dst=im_out)
 
-            alpha = 0.3
-            beta = 0.7
+            alpha = 0.9
+            beta = 0.1
             gamma = 0.0
             cv2.addWeighted(im_gray, alpha, mask, beta, gamma, im_out)
 
