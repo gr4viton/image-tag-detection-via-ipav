@@ -286,7 +286,7 @@ class C_tagModel: # tag model
             self.step_names = ['original', 'resize',
                                # 'gray',
                                # 'hls stack',
-                               'hls saturation',
+                               # 'hls saturation',
                                # 'erase color',
                                'gaussed',
                                # 'tresholded',
