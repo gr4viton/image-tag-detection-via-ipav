@@ -357,7 +357,8 @@ class StepControl():
         scoreType = cv2.ORB_FAST_SCORE
         # scoreType = cv2.ORB_HARRIS_SCORE
         orb = cv2.ORB_create(scoreType=scoreType)
-        orb.setMaxFeatures(300)
+        orb.setMaxFeatures(1000)
+        # orb.setScaleFactor(1.2)
 # 'setEdgeThreshold','setFastThreshold', \
 # 'setFirstLevel', 'setMaxFeatures', \
 # 'setNLevels', 'setPatchSize', \
@@ -365,6 +366,59 @@ class StepControl():
 #         setWTA_K
 
         # orb = cv2.ORB_create()
+        strTag = '2L'
+        strTag = 'c2'
+        model_tag = fh.C_tagModel(strTag)
+        imTag = model_tag.imTag
+        kp_tag = orb.detect(imTag, None)
+
+        # compute the descriptors with ORB
+        kp_tag, des_tag = orb.compute(imTag, kp_tag)
+
+        def make_orb_2(im):
+            # find the keypoints with ORB
+            kp = orb.detect(im, None)
+            # compute the descriptors with ORB
+            kp, des = orb.compute(im, kp)
+
+            col = 142
+            im_out = np.zeros(im.shape)
+            flags = cv2.DRAW_MATCHES_FLAGS_DRAW_OVER_OUTIMG + (
+                    cv2.DRAW_MATCHES_FLAGS_DEFAULT)
+
+            des1 = des
+            des2 = des_tag
+
+            # FLANN parameters
+            FLANN_INDEX_KDTREE = 0
+            index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+            search_params = dict(checks=50)   # or pass empty dictionary
+
+            flann = cv2.FlannBasedMatcher(index_params,search_params)
+
+            matches = flann.knnMatch(des1,des2,k=2)
+
+            # Need to draw only good matches, so create a mask
+            matchesMask = [[0,0] for i in range(len(matches))]
+
+            # ratio test as per Lowe's paper
+            for i,(m,n) in enumerate(matches):
+                if m.distance < 0.7*n.distance:
+                    matchesMask[i]=[1,0]
+
+            draw_params = dict(matchColor = (0,255,0),
+                               singlePointColor = (255,0,0),
+                               matchesMask = matchesMask,
+                               flags = 0)
+
+            flags = cv2.DRAW_MATCHES_FLAGS_DEFAULT + cv2.DRAW_MATCHES_FLAGS_DRAW_OVER_OUTIMG
+
+            # Draw first 10 matches.
+            sh = [im.shape[0] + imTag.shape[0], im.shape[1] + imTag.shape[1]]
+            im_out = np.zeros(sh)
+            cv2.drawMatches(im, kp, imTag, kp_tag, matches[:10], flags=flags, outImg=im_out)
+
+            return im_out
 
         def make_orb(im):
             # find the keypoints with ORB
@@ -380,8 +434,26 @@ class StepControl():
             flags = cv2.DRAW_MATCHES_FLAGS_DRAW_OVER_OUTIMG + (
                     cv2.DRAW_MATCHES_FLAGS_DEFAULT)
 
-            cv2.drawKeypoints(im, kp, im_out, color=col, flags=flags)
-            print(len(kp))
+            # draw only one keypoints set
+            # cv2.drawKeypoints(im, kp_tag, im_out, color=col, flags=flags)
+            # cv2.drawKeypoints(im, kp, im_out, color=col, flags=flags)
+
+
+            # create BFMatcher object
+            bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+
+            # Match descriptors.
+            matches = bf.match(des,des_tag)
+
+            # Sort them in the order of their distance.
+            matches = sorted(matches, key = lambda x:x.distance)
+
+            flags = cv2.DRAW_MATCHES_FLAGS_DEFAULT + cv2.DRAW_MATCHES_FLAGS_DRAW_OVER_OUTIMG
+            # Draw first 10 matches.
+            sh = [im.shape[0] + imTag.shape[0], im.shape[1] + imTag.shape[1]]
+            im_out = np.zeros(sh)
+            cv2.drawMatches(im, kp, imTag, kp_tag, matches[:10], flags=flags, outImg=im_out)
+
             return im_out
 
 

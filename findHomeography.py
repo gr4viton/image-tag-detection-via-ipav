@@ -284,12 +284,12 @@ class C_tagModel: # tag model
                                ]
 
             self.step_names = ['original', 'resize',
-                               # 'gray',
+                               'gray',
                                # 'hls stack',
                                # 'hls saturation',
                                # 'erase color',
                                'gaussed',
-                               # 'tresholded',
+                               'tresholded',
                                # 'tresholded inverted',
                                # 'border touch cleared', 'removed frame',
                                # 'flooded w/black',
