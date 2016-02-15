@@ -326,7 +326,6 @@ class StepControl():
         def make_otsu_inv(im):
             return threshIT(im,'otsu_inv').copy()
 
-
         def make_clear_border(im, width = 5):
             return imclearborder(im, width, self.get_buffer(im), self.get_mask(im))
 
