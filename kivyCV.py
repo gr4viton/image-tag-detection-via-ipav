@@ -234,7 +234,8 @@ class multicopterApp(App):
         # time.sleep(0.5)
 
 
-        selected_tag_name = 'c2'
+        # selected_tag_name = 'c2'
+        selected_tag_name = '3L'
 
         tag_names = ['2L', '3L', 'c2']
 
@@ -351,7 +352,10 @@ class multicopterApp(App):
                 for name, member in tag_error.__members__.items()]
         self.root.tag_error_count_text = '\n'.join(list)
 
-        self.root.txt_numFound.text = str(self.tag_errors_count.get(tag_error.flawless))
+        # name = tag_error.flawless.name
+        # print(name)
+        # print(self.tag_errors_count)
+        self.root.txt_numFound.text = str(self.tag_errors_count.get(tag_error.flawless.name))
 
     def on_stop(self):
         print("Stopping capture")

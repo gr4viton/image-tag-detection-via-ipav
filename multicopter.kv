@@ -37,16 +37,16 @@
 #                size: self.size
 
         Button:
-            text: "Hide all"
+            text: "Hide all steps"
             size_hint_y: 0.1
             on_press: root.step_widgets_control.show('none')
         Button:
-            text: "Show all"
+            text: "Show all steps"
             size_hint_y: 0.1
             on_press: root.step_widgets_control.show('all')
         Button:
 #            text: 'Switch cameras'
-            text: 'Toggle findtag algorythm'
+            text: 'Toggle computing'
             size_hint_y: .1
             on_press: root.findtag_control.toggle_findtagging()
             # pos_hint: {'center_x':.5, 'center_y': .5}
@@ -59,41 +59,94 @@
             size_hint_y: .1
             on_press: root.capture_control.toggle_source_id();
             # pos_hint: {'center_x':.5, 'center_y': .5}
+
         Image:
             id: img_webcam
             size_hint_y: 1
-#            size_hint_x: 1
-        Label:
-            #id: lb_webcam_resolution
-            size_hint_y: .1
-            text: root.lb_webcam_resolution
-        Slider:
-            id: slider_resolution_div
-            sla_steps: 42
-            value: 0.5
-            min: 0.05
-            max: 2
-            on_value: root.findtag_control.set_resolution_div(self.value);
-        Label:
-            text: str(slider_resolution_div.value)
+
+        GridLayout:
+            cols: 1
+            size_hint_y: None
+            padding: (2,2,2,2)
+            spacing: (2,2)
+            margin: 5
+            color: .08, .16 , .24
+            canvas.before:
+                Color:
+                    rgb: self.color
+                Rectangle:
+                    pos: self.x + self.margin, self.y + self.margin + 1
+                    size: self.width - 2 * self.margin , self.height - 2 * self.margin
+    #            size_hint_x: 1
+            Label:
+                text: "Camera resolution"
+            Label:
+                #id: lb_webcam_resolution
+#                size_hint_y: .1
+                text: root.lb_webcam_resolution
+
+        GridLayout:
+            cols: 1
+            size_hint_y: None
+            padding: (2,2,2,2)
+            spacing: (2,2)
+            margin: 5
+            color: .08, .16 , .24
+            canvas.before:
+                Color:
+                    rgb: self.color
+                Rectangle:
+                    pos: self.x + self.margin, self.y + self.margin + 1
+                    size: self.width - 2 * self.margin , self.height - 2 * self.margin
+
+            Label:
+                text: 'Resolution multiplier'
+            Label:
+                text: str(slider_resolution_div.value)
+            Slider:
+                id: slider_resolution_div
+                sla_steps: 42
+                value: 0.5
+                min: 0.05
+                max: 2
+                on_value: root.findtag_control.set_resolution_div(self.value);
+
+
+
         GridLayout:
             cols: 2
-#            size_hint_y: 0.1
-#            cols.halign: 'right'
+            size_hint_y: None
+            padding: (2,2,2,2)
+            spacing: (2,2)
+            margin: 5
+            color: .08, .16 , .24
+            canvas.before:
+                Color:
+                    rgb: self.color
+                Rectangle:
+                    pos: self.x + self.margin, self.y + self.margin + 1
+                    size: self.width - 2 * self.margin , self.height - 2 * self.margin
             Label:
-                text: "Found tags:"
+                text: "Found tags"
+                halign: "right"
+                valign: "middle"
+                text_size: self.size
 #                pos_hint_x: 10
             Label:
                 id: txt_numFound
 
             Label:
-                text: "findtag mean last [ms]:"
+                text: "Chain last [ms]"
                 halign: 'right'
+                valign: "middle"
+                text_size: self.size
             Label:
                 text: root.label_mean_exec_time_last
             Label:
-                text: "findtag mean [ms]:"
+                text: "Chain mean [ms]"
                 halign: 'right'
+                valign: "middle"
+                text_size: self.size
             Label:
                 text: root.label_mean_exec_time
 #                size_hint_y: 0.2
@@ -188,6 +241,29 @@
         #        Button:
         #            text: 'Exit'
         #            on_press: Exit()
+
+
+#[ColoredGrid@GridLayout]:
+#    cols: 1
+#    size_hint_y: None
+##    height: self.minimum_height * 4
+##            height: 300
+##    size_hint_y: layout_steps_height / 400
+##            size_hint_x: 1/3
+#    cols: 1
+#    padding: (2,2,2,2)
+#    spacing: (2,2)
+#    margin: 5
+#    color: .08, .16 , .24
+#    canvas.before:
+#        Color:
+#            rgb: self.color
+#        Rectangle:
+#            pos: self.x + self.margin, self.y + self.margin + 1
+#            size: self.width - 2 * self.margin , self.height - 2 * self.margin
+#
+#    GridLayout:
+#        ctx.GridLayout
 
 <StepWidget>:
     toggle_object: toggle
