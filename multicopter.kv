@@ -66,7 +66,7 @@
 
         GridLayout:
             cols: 1
-            size_hint_y: None
+            size_hint_y: 0.3
             padding: (2,2,2,2)
             spacing: (2,2)
             margin: 5
@@ -87,7 +87,7 @@
 
         GridLayout:
             cols: 1
-            size_hint_y: None
+            size_hint_y: 0.3
             padding: (2,2,2,2)
             spacing: (2,2)
             margin: 5
@@ -126,13 +126,19 @@
                 Rectangle:
                     pos: self.x + self.margin, self.y + self.margin + 1
                     size: self.width - 2 * self.margin , self.height - 2 * self.margin
+
+#            row_force_default: 'true'
+#            row_default_height: 15
+
             Label:
+                size_hint_x: 2
                 text: "Found tags"
                 halign: "right"
                 valign: "middle"
                 text_size: self.size
 #                pos_hint_x: 10
             Label:
+#                size_hint_x: None
                 id: txt_numFound
 
             Label:
@@ -151,10 +157,10 @@
                 text: root.label_mean_exec_time
 #                size_hint_y: 0.2
     #            text: root.findtag_control.mean_exec_time
-        Label:
-            text:
-                'splitter.width: {}\nparent.width: {}\nmax_size: {}'\
-                .format(spl.width, root.width, spl.max_size)
+#        Label:
+#            text:
+#                'splitter.width: {}\nparent.width: {}\nmax_size: {}'\
+#                .format(spl.width, root.width, spl.max_size)
 
     Splitter:
         id: spl
